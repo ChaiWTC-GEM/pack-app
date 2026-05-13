@@ -714,22 +714,23 @@ function renderUpcomingList() {
   const container = document.getElementById('upcoming-list');
   const today = new Date();
   const items = [];
-  for (let i = 0; i < 30; i++) {
+  for (let i = -7; i <= 1; i++) {
     const d = new Date(today); d.setDate(today.getDate() + i);
     const ds = toDateStr(d);
-    if (state.calSummary[ds]?.total > 0) items.push({ date: ds, ...state.calSummary[ds] });
+    const summary = state.calSummary[ds];
+    const pending = summary ? summary.total - (summary.packed || 0) : 0;
+    if (pending > 0) items.push({ date: ds, ...summary, pending });
   }
   if (!items.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">ไม่มีออเดอร์ที่รอดำเนินการ</div><div class="empty-sub">กด ↻ เพื่อ sync ข้อมูลใหม่</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">ไม่มีงานค้างแพ็ค</div><div class="empty-sub">กด ↻ เพื่อ sync ข้อมูลใหม่</div></div>';
     return;
   }
-  container.innerHTML = '<div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:0.5px;margin-bottom:12px;text-transform:uppercase;">ออเดอร์ที่รอดำเนินการ</div>' +
+  container.innerHTML = '<div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:0.5px;margin-bottom:12px;text-transform:uppercase;">งานที่ต้องแพ็ค</div>' +
     items.map(it => {
-      const pending = it.total - (it.packed || 0);
       const label   = new Date(it.date + 'T00:00:00').toLocaleDateString('th-TH', { day:'numeric', month:'long', year:'2-digit' });
       return `<div class="upcoming-item" onclick="openDay('${it.date}')">
-        <div class="upcoming-num" style="color:${pending>0?'var(--orange)':'var(--green)'}">${pending}</div>
-        <div><div class="upcoming-date">${label}</div><div class="upcoming-sub">รอแพ็ค ${pending} / ทั้งหมด ${it.total} ออเดอร์</div></div>
+        <div class="upcoming-num" style="color:var(--orange)">${it.pending}</div>
+        <div><div class="upcoming-date">${label}</div><div class="upcoming-sub">รอแพ็ค ${it.pending} / ทั้งหมด ${it.total} ออเดอร์</div></div>
         <div style="margin-left:auto;font-size:22px;color:var(--muted);">›</div>
       </div>`;
     }).join('');
