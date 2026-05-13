@@ -244,6 +244,13 @@
   .pack-item.complete .pack-item-big-count .scanned { color: var(--green); }
   .pack-item.over     .pack-item-big-count .scanned { color: var(--red); }
   .pack-item-count-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-align: right; }
+  .manual-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    width: fit-content; margin-top: 6px; padding: 3px 8px;
+    border-radius: 999px; background: rgba(255,149,0,0.12);
+    border: 1px solid rgba(255,149,0,0.25);
+    color: var(--orange); font-size: 11px; font-weight: 700;
+  }
 
   .pack-item-controls { display: flex; align-items: center; gap: 10px; padding: 10px 18px 16px; }
   .ctrl-btn {
@@ -490,6 +497,19 @@ const state = {
 
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+function normalizeSkuForLookup(v) {
+  return String(v || '').replace(/^'/, '').trim().toUpperCase().replace(/–/g, '-').replace(/\s+/g, '');
+}
+
+function getSkuMasterEntry(sku) {
+  return state.skuMaster[sku] || state.skuMaster[normalizeSkuForLookup(sku)] || null;
+}
+
+function isManualCountItem(item) {
+  const master = getSkuMasterEntry(item.sku);
+  return Boolean(master && master.no_barcode === true && master.has_barcode !== true);
+}
 
 // ============================================================
 // INIT
@@ -753,6 +773,7 @@ function renderPackItems() {
     const pct        = Math.min(100, Math.round(scanned / item.qty * 100));
     const isComplete = scanned >= item.qty;
     const isOver     = scanned > item.qty;
+    const manual     = isManualCountItem(item);
     const cls        = isOver ? 'over' : isComplete ? 'complete' : '';
     return `<div class="pack-item ${cls}">
       <div class="pack-item-header">
@@ -760,19 +781,20 @@ function renderPackItems() {
         <div class="pack-item-info">
           <div class="pack-item-sku">${item.sku}</div>
           <div class="pack-item-name">${item.name}</div>
+          ${manual ? '<div class="manual-badge">นับมือ · ไม่มี barcode</div>' : ''}
         </div>
         <div class="pack-item-count-wrap">
           <div class="pack-item-big-count ${cls}">
             <span class="scanned">${scanned}</span><span class="sep">/</span><span class="required">${item.qty}</span>
           </div>
-          <div class="pack-item-count-label">สแกนแล้ว / ต้องส่ง</div>
+          <div class="pack-item-count-label">${manual ? 'นับมือ / ต้องส่ง' : 'สแกนแล้ว / ต้องส่ง'}</div>
         </div>
       </div>
       <div class="pack-item-controls">
         <button class="ctrl-btn reset" onclick="adjustCount('${item.sku}','reset')" ${scanned>0?'':'disabled'}>↺</button>
         <div class="ctrl-spacer"></div>
         <button class="ctrl-btn minus" onclick="adjustCount('${item.sku}','minus')" ${scanned>0?'':'disabled'}>−</button>
-        <button class="ctrl-btn plus"  onclick="adjustCount('${item.sku}','plus')">+</button>
+        <button class="ctrl-btn plus"  onclick="adjustCount('${item.sku}','plus')" ${scanned>=item.qty?'disabled':''}>+</button>
       </div>
       <div class="pack-item-bar"><div class="pack-item-bar-fill" style="width:${pct}%"></div></div>
     </div>`;
@@ -780,8 +802,11 @@ function renderPackItems() {
 }
 
 function adjustCount(sku, action) {
+  const o = state.currentOrder;
+  const item = o?.items.find(i => i.sku === sku);
+  if (!item) return;
   const c = state.scanCounts[sku] || 0;
-  if (action === 'plus')  state.scanCounts[sku] = c + 1;
+  if (action === 'plus')  state.scanCounts[sku] = Math.min(item.qty, c + 1);
   if (action === 'minus') state.scanCounts[sku] = Math.max(0, c - 1);
   if (action === 'reset') state.scanCounts[sku] = 0;
   vibrate([30]);
@@ -801,10 +826,11 @@ function updateProgress() {
   const btn = document.getElementById('btn-complete');
   if (allDone) {
     btn.classList.add('visible'); btn.disabled = false;
-    setScanStatus('✓ ครบทุกรายการ — กดยืนยันได้เลย', 'success');
+    const hasManual = o.items.some(isManualCountItem);
+    setScanStatus(hasManual ? '✓ ครบแล้ว — มีรายการนับมือ กรุณาตรวจซ้ำ' : '✓ ครบทุกรายการ — กดยืนยันได้เลย', hasManual ? 'warning' : 'success');
   } else {
     btn.classList.remove('visible');
-    setScanStatus(`รอสแกนอีก ${required - scanned} ชิ้น`, '');
+    setScanStatus(`รอสแกน/นับอีก ${Math.max(0, required - scanned)} ชิ้น`, '');
   }
 }
 
@@ -924,6 +950,10 @@ async function confirmComplete() {
   const o = state.currentOrder; if (!o) return;
   if (!o.items.every(i => (state.scanCounts[i.sku] || 0) >= i.qty)) {
     showToast('สินค้ายังไม่ครบ ไม่สามารถยืนยันได้', 'error'); return;
+  }
+  if (o.items.some(isManualCountItem)) {
+    const ok = window.confirm('ออเดอร์นี้มีสินค้าที่ไม่มี barcode และต้องนับมือ\\n\\nกรุณาตรวจจำนวนจริงอีกครั้งก่อนยืนยันแพ็คเสร็จ');
+    if (!ok) return;
   }
   showLoading('บันทึกสถานะ...');
   try {
