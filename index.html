@@ -614,6 +614,9 @@ const state = {
   scanCounts:   {},
   codeReader:   null,
   scannerActive:false,
+  scannerOpening:false,
+  scannerLastClosedAt:0,
+  scannerStopTimer:null,
   lastScanValue:"",
   lastScanAt:   0,
   liffReady:    false,
@@ -1079,8 +1082,9 @@ function setScanStatus(msg, type) {
 // SCAN — ZXing live camera
 // ============================================================
 async function scanBarcode(targetSku) {
+  if (state.scannerOpening || state.scannerActive) return;
   state.targetScanSku = targetSku || null;
-  startScanner(targetSku);
+  startScanner(targetSku, 0);
 }
 
 function getBarcodeHints() {
@@ -1097,8 +1101,8 @@ function getBarcodeHints() {
   return hints;
 }
 
-async function startScanner(targetSku) {
-  if (state.scannerActive) return;
+async function startScanner(targetSku, attempt = 0) {
+  if (state.scannerActive || state.scannerOpening) return;
   if (!window.ZXing) {
     showToast('โหลดตัวอ่าน barcode ไม่สำเร็จ', 'error');
     return;
@@ -1111,12 +1115,15 @@ async function startScanner(targetSku) {
   overlay.classList.add('active');
   status.textContent = 'กำลังเปิดกล้องหลัง...';
   setScannerResult('รออ่าน barcode', '');
+  state.scannerOpening = true;
   state.scannerActive = true;
   state.lastScanValue = '';
   state.lastScanAt = 0;
   state.targetScanSku = targetSku || state.targetScanSku || null;
 
   try {
+    const waitMs = Math.max(0, 450 - (Date.now() - (state.scannerLastClosedAt || 0)));
+    if (waitMs) await new Promise(resolve => setTimeout(resolve, waitMs));
     const ZXing = window.ZXing;
     state.codeReader = new ZXing.BrowserMultiFormatReader(getBarcodeHints(), 300);
     const constraints = {
@@ -1137,7 +1144,7 @@ async function startScanner(targetSku) {
       status.textContent = 'อ่านได้: ' + value;
       const scanResult = processBarcode(value, state.targetScanSku);
       showScanResult(scanResult, value);
-      setTimeout(stopScanner, 650);
+      if (!state.scannerStopTimer) state.scannerStopTimer = setTimeout(stopScanner, 650);
     };
 
     if (state.codeReader.decodeFromConstraints) {
@@ -1150,9 +1157,14 @@ async function startScanner(targetSku) {
     }
     setTimeout(applyContinuousFocus, 500);
     status.textContent = 'พร้อมสแกน 1 ครั้ง';
+    state.scannerOpening = false;
   } catch(e) {
     stopScanner();
-    showToast('เปิดกล้องไม่ได้ — ลองเปิดผ่าน Chrome/Safari หรือกรอกเอง', 'error');
+    if (attempt < 1) {
+      setTimeout(() => startScanner(targetSku, attempt + 1), 650);
+      return;
+    }
+    showToast('เปิดกล้องไม่สำเร็จ ลองกดสแกนอีกครั้ง', 'error');
   }
 }
 
@@ -1170,6 +1182,10 @@ async function applyContinuousFocus() {
 }
 
 function stopScanner() {
+  if (state.scannerStopTimer) {
+    clearTimeout(state.scannerStopTimer);
+    state.scannerStopTimer = null;
+  }
   const overlay = document.getElementById('scanner-overlay');
   if (overlay) overlay.classList.remove('active');
   if (state.codeReader) {
@@ -1181,6 +1197,8 @@ function stopScanner() {
   stream?.getTracks?.().forEach(track => track.stop());
   if (videoEl) videoEl.srcObject = null;
   state.scannerActive = false;
+  state.scannerOpening = false;
+  state.scannerLastClosedAt = Date.now();
   state.targetScanSku = null;
 }
 
@@ -1283,21 +1301,31 @@ async function confirmComplete() {
     const ok = window.confirm('ออเดอร์นี้มีสินค้าที่ไม่มี barcode และต้องนับมือ\\n\\nกรุณาตรวจจำนวนจริงอีกครั้งก่อนยืนยันแพ็คเสร็จ');
     if (!ok) return;
   }
-  showLoading('บันทึกสถานะ...');
+  const prevStatus = o.status;
+  const idx = state.dayOrders.findIndex(x => x.order_id === o.order_id);
+  const prevPacked = state.calSummary[state.currentDay]?.packed || 0;
+  o.status = 'packed';
+  if (idx > -1) state.dayOrders[idx].status = 'packed';
+  if (state.calSummary[state.currentDay])
+    state.calSummary[state.currentDay].packed = Math.min(
+      state.calSummary[state.currentDay].total || prevPacked + 1,
+      prevPacked + (prevStatus === 'packed' ? 0 : 1)
+    );
+  renderDayScreen(state.currentDay);
+  renderCalendar();
+  showScreen('day');
+  showToast('กำลังบันทึกสถานะ...', 'success');
   try {
     await callAPI('markOrderPacked', { orderId: o.order_id });
-    o.status = 'packed';
-    const idx = state.dayOrders.findIndex(x => x.order_id === o.order_id);
-    if (idx > -1) state.dayOrders[idx].status = 'packed';
-    if (state.calSummary[state.currentDay])
-      state.calSummary[state.currentDay].packed = (state.calSummary[state.currentDay].packed || 0) + 1;
     showToast('✓ แพ็คเสร็จแล้ว!', 'success');
-    setTimeout(() => showScreen('day'), 800);
+  } catch(e) {
+    o.status = prevStatus;
+    if (idx > -1) state.dayOrders[idx].status = prevStatus;
+    if (state.calSummary[state.currentDay]) state.calSummary[state.currentDay].packed = prevPacked;
     renderDayScreen(state.currentDay);
     renderCalendar();
-  } catch(e) {
     showToast('บันทึกไม่สำเร็จ', 'error');
-  } finally { hideLoading(); }
+  }
 }
 
 // ============================================================
