@@ -887,10 +887,9 @@ function renderPackScreen() {
 
 function renderPackPrintAction(o) {
   const wrap = document.getElementById('pack-print-actions');
-  if (o.label_url) {
-    wrap.innerHTML = `<button class="print-link-btn" onclick="createOrOpenLabel()">พิมพ์ใบปะหน้า</button>`;
-  } else if (canCreateLabelFromPack(o)) {
-    wrap.innerHTML = `<button class="print-link-btn" id="btn-create-label" onclick="createOrOpenLabel()">สร้างใบปะหน้า</button>`;
+  if (o.label_url || canCreateLabelFromPack(o)) {
+    const label = o.label_url ? 'พิมพ์ใบปะหน้า' : 'สร้างใบปะหน้า';
+    wrap.innerHTML = `<button class="print-link-btn" id="btn-create-label" onclick="createOrOpenLabel()">${label}</button>`;
   } else {
     wrap.innerHTML = '';
   }
@@ -903,15 +902,17 @@ function canCreateLabelFromPack(o) {
 async function createOrOpenLabel() {
   const o = state.currentOrder;
   if (!o) return;
-  if (o.label_url) {
+
+  const canCreate = canCreateLabelFromPack(o);
+  if (o.label_url && !canCreate) {
     openPrintUrl(o.label_url);
     return;
   }
-  if (!canCreateLabelFromPack(o)) return;
+  if (!canCreate) return;
 
   const btn = document.getElementById('btn-create-label');
-  if (btn) { btn.disabled = true; btn.textContent = 'กำลังสร้างใบปะหน้า...'; }
-  showLoading('สร้างใบปะหน้า...');
+  if (btn) { btn.disabled = true; btn.textContent = o.label_url ? 'กำลังตรวจใบปะหน้า...' : 'กำลังสร้างใบปะหน้า...'; }
+  showLoading(o.label_url ? 'ตรวจใบปะหน้า...' : 'สร้างใบปะหน้า...');
   try {
     const result = await callAPI('createLabelForOrder', { orderId: o.order_id });
     if (!result || !result.label_url) throw new Error('No label URL');
