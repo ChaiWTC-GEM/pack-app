@@ -638,7 +638,7 @@ function escapeAttr(value) {
 
 function openPrintUrl(url) {
   if (!url) return;
-  url = toDrivePreviewUrl(url);
+  url = toDriveDownloadUrl(url);
   if (window.liff && state.liffReady && liff.isInClient()) {
     liff.openWindow({ url, external: true });
     return;
@@ -646,11 +646,11 @@ function openPrintUrl(url) {
   window.open(url, '_blank', 'noopener');
 }
 
-function toDrivePreviewUrl(url) {
+function toDriveDownloadUrl(url) {
   const raw = String(url || '').trim();
   const fileId = extractDriveFileId(raw);
   if (!fileId) return raw;
-  return `https://drive.google.com/file/d/${fileId}/preview`;
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
 function extractDriveFileId(url) {
