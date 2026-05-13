@@ -876,8 +876,11 @@ function processBarcode(code) {
 
   let matchedSku = null;
   if (state.scanCounts.hasOwnProperty(code)) matchedSku = code;
-  if (!matchedSku && state.skuMaster[code]?.sku && state.scanCounts.hasOwnProperty(state.skuMaster[code].sku))
-    matchedSku = state.skuMaster[code].sku;
+  if (!matchedSku && state.skuMaster[code]) {
+    const master = state.skuMaster[code];
+    const candidates = Array.isArray(master.skus) ? master.skus : [master.sku];
+    matchedSku = candidates.find(sku => sku && state.scanCounts.hasOwnProperty(sku)) || null;
+  }
 
   if (!matchedSku) { setScanStatus('❌ ไม่พบสินค้านี้ใน order', 'error'); vibrate([200, 50, 200]); return; }
 
