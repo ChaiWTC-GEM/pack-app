@@ -638,32 +638,11 @@ function escapeAttr(value) {
 
 function openPrintUrl(url) {
   if (!url) return;
-  url = toDriveDownloadUrl(url);
   if (window.liff && state.liffReady && liff.isInClient()) {
     liff.openWindow({ url, external: true });
     return;
   }
   window.open(url, '_blank', 'noopener');
-}
-
-function toDriveDownloadUrl(url) {
-  const raw = String(url || '').trim();
-  const fileId = extractDriveFileId(raw);
-  if (!fileId) return raw;
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
-}
-
-function extractDriveFileId(url) {
-  const patterns = [
-    /\/file\/d\/([^\/?#]+)/,
-    /[?&]id=([^&#]+)/,
-    /\/d\/([^\/?#]+)/
-  ];
-  for (const pattern of patterns) {
-    const match = String(url || '').match(pattern);
-    if (match?.[1]) return match[1];
-  }
-  return '';
 }
 
 // ============================================================
