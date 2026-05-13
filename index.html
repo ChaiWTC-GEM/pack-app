@@ -131,7 +131,15 @@
   .cal-day.today.sunday   .cal-day-num { background: var(--sunday); }
   .cal-day.today.saturday .cal-day-num { background: var(--saturday); }
 
-  .cal-dot-wrap { display: flex; gap: 5px; margin-top: 4px; margin-bottom: 8px; justify-content: center; }
+  .cal-dot-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 9px;
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
   .cal-dot { width: 10px; height: 10px; border-radius: 50%; }
   .cal-dot.has-orders { background: var(--orange); }
   .cal-dot.all-done   { background: var(--green); }
