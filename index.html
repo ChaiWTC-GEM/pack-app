@@ -230,7 +230,7 @@
     justify-content: center; font-size: 22px; flex-shrink: 0; margin-top: 4px;
   }
   .pack-item-info  { flex: 1; min-width: 0; }
-  .pack-item-sku   { font-family: 'Space Mono',monospace; font-size: 12px; color: var(--muted); }
+  .pack-item-sku   { font-family: 'Space Mono',monospace; font-size: 16px; color: #000; font-weight: 800; line-height: 1.3; }
   .pack-item-name  { font-size: 16px; font-weight: 700; margin-top: 3px; line-height: 1.3; }
 
   .pack-item-count-wrap { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
@@ -287,6 +287,7 @@
   .scan-status.warning { color: var(--orange); }
 
   .scan-actions { display: flex; gap: 10px; }
+  .scan-actions.hidden { display: none; }
   .btn-scan {
     flex: 1; height: 58px; border-radius: var(--radius);
     border: none; background: var(--accent); color: #fff;
@@ -310,6 +311,42 @@
   }
   .btn-complete.visible  { display: block; }
   .btn-complete:disabled { background: var(--border); color: var(--muted); cursor: default; }
+  .btn-recount {
+    width: 100%; height: 58px; border-radius: var(--radius);
+    border: 1.5px solid var(--accent); background: rgba(0,122,255,0.08);
+    color: var(--accent); font-family: 'Sarabun',sans-serif;
+    font-size: 18px; font-weight: 800; cursor: pointer; display: none;
+  }
+  .btn-recount.visible { display: block; }
+
+  /* ============ LIVE SCANNER ============ */
+  .scanner-overlay {
+    display: none; position: fixed; inset: 0; z-index: 260;
+    background: rgba(0,0,0,0.94); flex-direction: column;
+    align-items: center; justify-content: center; padding: 18px;
+  }
+  .scanner-overlay.active { display: flex; }
+  .scanner-video-wrap {
+    width: min(420px, 92vw); aspect-ratio: 1;
+    border-radius: 18px; overflow: hidden; position: relative;
+    border: 2px solid var(--accent); background: #000;
+  }
+  #scanner-video { width: 100%; height: 100%; object-fit: cover; }
+  .scanner-frame {
+    position: absolute; left: 8%; right: 8%; top: 37%; height: 26%;
+    border: 2px solid rgba(255,255,255,0.85); border-radius: 12px;
+    box-shadow: 0 0 0 999px rgba(0,0,0,0.18);
+  }
+  .scanner-line {
+    position: absolute; left: 10%; right: 10%; top: 50%;
+    height: 2px; background: var(--green); box-shadow: 0 0 10px var(--green);
+  }
+  .scanner-status { color: #fff; font-size: 16px; font-weight: 700; margin-top: 18px; text-align: center; }
+  .scanner-hint { color: rgba(255,255,255,0.66); font-size: 13px; margin-top: 6px; text-align: center; }
+  .scanner-close {
+    margin-top: 18px; height: 48px; padding: 0 34px; border-radius: 999px;
+    background: #fff; border: none; color: #111; font-size: 16px; font-weight: 800;
+  }
 
   /* ============ MANUAL INPUT ============ */
   .manual-overlay {
@@ -377,10 +414,6 @@
 </style>
 </head>
 <body>
-
-<!-- hidden camera input for barcode -->
-<input type="file" id="camera-input" accept="image/*" capture="environment"
-       style="display:none" onchange="handleCameraInput(event)">
 
 <!-- SCREEN 1: CALENDAR -->
 <div id="screen-calendar" class="screen active">
@@ -450,8 +483,21 @@
       <button class="btn-scan" id="btn-scan" onclick="scanBarcode()"><span>📷</span> สแกน Barcode</button>
       <button class="btn-manual" onclick="showManual()">⌨️</button>
     </div>
+    <button class="btn-recount" id="btn-recount" onclick="startRecount()">นับใหม่อีกครั้ง</button>
     <button class="btn-complete" id="btn-complete" onclick="confirmComplete()">✓ ยืนยันแพ็คเสร็จ</button>
   </div>
+</div>
+
+<!-- LIVE SCANNER -->
+<div class="scanner-overlay" id="scanner-overlay">
+  <div class="scanner-video-wrap">
+    <video id="scanner-video" autoplay muted playsinline></video>
+    <div class="scanner-frame"></div>
+    <div class="scanner-line"></div>
+  </div>
+  <div class="scanner-status" id="scanner-status">กำลังเปิดกล้อง...</div>
+  <div class="scanner-hint">ใช้กล้องหลัง จ่อ barcode ให้อยู่ในกรอบ</div>
+  <button class="scanner-close" onclick="stopScanner()">ปิดกล้อง</button>
 </div>
 
 <!-- MANUAL INPUT -->
@@ -492,6 +538,10 @@ const state = {
   dayOrders:    [],
   currentOrder: null,
   scanCounts:   {},
+  codeReader:   null,
+  scannerActive:false,
+  lastScanValue:"",
+  lastScanAt:   0,
   liffReady:    false,
 };
 
@@ -531,6 +581,7 @@ window.addEventListener('load', () => {
 // SCREEN
 // ============================================================
 function showScreen(name) {
+  if (name !== 'pack') stopScanner();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
 }
@@ -735,6 +786,7 @@ function renderOrderCard(o) {
 // PACK VIEW
 // ============================================================
 function openOrder(orderId) {
+  stopScanner();
   const order = state.dayOrders.find(o => o.order_id === orderId);
   if (!order) return;
 
@@ -749,7 +801,8 @@ function openOrder(orderId) {
 
   state.currentOrder = order;
   state.scanCounts   = {};
-  order.items.forEach(item => { state.scanCounts[item.sku] = 0; });
+  order.recountMode  = false;
+  order.items.forEach(item => { state.scanCounts[item.sku] = order.status === 'packed' ? item.qty : 0; });
   renderPackScreen();
   showScreen('pack');
 }
@@ -763,11 +816,12 @@ function renderPackScreen() {
   document.getElementById('pack-meta').textContent     = `${o.channel} · ${o.items.length} รายการ · ${o.total_qty} ชิ้น`;
   renderPackItems();
   updateProgress();
-  setScanStatus('พร้อมสแกน', '');
+  setScanStatus(o.status === 'packed' && !o.recountMode ? 'แพ็คแล้ว — กดนับใหม่ถ้าต้องการตรวจซ้ำ' : 'พร้อมสแกน', o.status === 'packed' && !o.recountMode ? 'success' : '');
 }
 
 function renderPackItems() {
   const o = state.currentOrder;
+  const readOnlyPacked = o.status === 'packed' && !o.recountMode;
   document.getElementById('pack-items-list').innerHTML = o.items.map(item => {
     const scanned    = state.scanCounts[item.sku] || 0;
     const pct        = Math.min(100, Math.round(scanned / item.qty * 100));
@@ -790,7 +844,7 @@ function renderPackItems() {
           <div class="pack-item-count-label">${manual ? 'นับมือ / ต้องส่ง' : 'สแกนแล้ว / ต้องส่ง'}</div>
         </div>
       </div>
-      <div class="pack-item-controls">
+      <div class="pack-item-controls" style="${readOnlyPacked ? 'display:none;' : ''}">
         <button class="ctrl-btn reset" onclick="adjustCount('${item.sku}','reset')" ${scanned>0?'':'disabled'}>↺</button>
         <div class="ctrl-spacer"></div>
         <button class="ctrl-btn minus" onclick="adjustCount('${item.sku}','minus')" ${scanned>0?'':'disabled'}>−</button>
@@ -816,14 +870,25 @@ function adjustCount(sku, action) {
 
 function updateProgress() {
   const o        = state.currentOrder;
+  const readOnlyPacked = o.status === 'packed' && !o.recountMode;
   const scanned  = Object.values(state.scanCounts).reduce((a, b) => a + b, 0);
   const required = o.total_qty;
   const pct      = Math.min(100, Math.round(scanned / required * 100));
   const fill     = document.getElementById('pack-progress-fill');
   fill.style.width = pct + '%';
   fill.className   = 'pack-progress-fill' + (pct === 100 ? ' done' : '');
+  const scanActions = document.querySelector('#screen-pack .scan-actions');
   const allDone = o.items.every(i => (state.scanCounts[i.sku] || 0) >= i.qty);
   const btn = document.getElementById('btn-complete');
+  const recountBtn = document.getElementById('btn-recount');
+  scanActions.classList.toggle('hidden', readOnlyPacked);
+  recountBtn.classList.toggle('visible', readOnlyPacked);
+  btn.classList.toggle('visible', false);
+  btn.disabled = true;
+  if (readOnlyPacked) {
+    setScanStatus('แพ็คแล้ว — แสดงจำนวนครบตามออเดอร์', 'success');
+    return;
+  }
   if (allDone) {
     btn.classList.add('visible'); btn.disabled = false;
     const hasManual = o.items.some(isManualCountItem);
@@ -834,65 +899,122 @@ function updateProgress() {
   }
 }
 
+function startRecount() {
+  const o = state.currentOrder;
+  if (!o) return;
+  o.recountMode = true;
+  state.scanCounts = {};
+  o.items.forEach(item => { state.scanCounts[item.sku] = 0; });
+  renderPackItems();
+  updateProgress();
+  setScanStatus('เริ่มนับใหม่แล้ว', 'warning');
+}
+
 function setScanStatus(msg, type) {
   const el = document.getElementById('scan-status');
   el.textContent = msg; el.className = 'scan-status ' + (type || '');
 }
 
 // ============================================================
-// SCAN — LIFF scanCodeV2 (GitHub Pages) หรือ input file fallback
+// SCAN — ZXing live camera
 // ============================================================
 async function scanBarcode() {
-  // ถ้าอยู่ใน LINE และ LIFF ready → ใช้ scanCodeV2
-  if (window.liff && state.liffReady && liff.isInClient()) {
-    try {
-      if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: window.location.href });
-        return;
-      }
-      const result = await liff.scanCodeV2();
-      if (result && result.value) {
-        processBarcode(result.value);
-      } else {
-        showToast('ไม่พบ barcode', 'error');
-      }
-    } catch(e) {
-      // fallback ไป input file
-      document.getElementById('camera-input').click();
+  startScanner();
+}
+
+function getBarcodeHints() {
+  const ZXing = window.ZXing;
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
+    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODABAR,
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  return hints;
+}
+
+async function startScanner() {
+  if (state.scannerActive) return;
+  if (!window.ZXing) {
+    showToast('โหลดตัวอ่าน barcode ไม่สำเร็จ', 'error');
+    return;
+  }
+
+  const overlay = document.getElementById('scanner-overlay');
+  const status = document.getElementById('scanner-status');
+  const videoEl = document.getElementById('scanner-video');
+  overlay.classList.add('active');
+  status.textContent = 'กำลังเปิดกล้องหลัง...';
+  state.scannerActive = true;
+  state.lastScanValue = '';
+  state.lastScanAt = 0;
+
+  try {
+    const ZXing = window.ZXing;
+    state.codeReader = new ZXing.BrowserMultiFormatReader(getBarcodeHints(), 300);
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+    const onResult = (result) => {
+      if (!result) return;
+      const value = result.getText();
+      const now = Date.now();
+      if (value === state.lastScanValue && now - state.lastScanAt < 900) return;
+      state.lastScanValue = value;
+      state.lastScanAt = now;
+      status.textContent = 'อ่านได้: ' + value;
+      processBarcode(value);
+    };
+
+    if (state.codeReader.decodeFromConstraints) {
+      await state.codeReader.decodeFromConstraints(constraints, videoEl, onResult);
+    } else {
+      const devices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+      const back = devices.find(d => /back|rear|environment/i.test(d.label));
+      const deviceId = (back || devices[devices.length - 1] || {}).deviceId;
+      await state.codeReader.decodeFromVideoDevice(deviceId, videoEl, onResult);
     }
-  } else {
-    // browser ปกติ → input file
-    document.getElementById('camera-input').click();
+    setTimeout(applyContinuousFocus, 500);
+    status.textContent = 'พร้อมสแกนต่อเนื่อง';
+  } catch(e) {
+    stopScanner();
+    showToast('เปิดกล้องไม่ได้ — ลองเปิดผ่าน Chrome/Safari หรือกรอกเอง', 'error');
   }
 }
 
-async function handleCameraInput(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  showLoading('กำลังอ่าน barcode...');
+async function applyContinuousFocus() {
+  const videoEl = document.getElementById('scanner-video');
+  const stream = videoEl.srcObject;
+  const track = stream?.getVideoTracks?.()[0];
+  if (!track?.getCapabilities || !track?.applyConstraints) return;
+  const caps = track.getCapabilities();
   try {
-    const ZXing  = window.ZXing;
-    const hints  = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-    ]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    const reader = new ZXing.BrowserMultiFormatReader(hints);
-    const imgUrl = URL.createObjectURL(file);
-    const result = await reader.decodeFromImageUrl(imgUrl);
-    URL.revokeObjectURL(imgUrl);
-    processBarcode(result.getText());
-  } catch(e) {
-    showToast('อ่าน barcode ไม่สำเร็จ — ลองถ่ายใหม่หรือกรอกเอง', 'error');
-  } finally {
-    hideLoading();
-    event.target.value = '';
+    if (caps.focusMode?.includes('continuous')) {
+      await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+    }
+  } catch(e) {}
+}
+
+function stopScanner() {
+  const overlay = document.getElementById('scanner-overlay');
+  if (overlay) overlay.classList.remove('active');
+  if (state.codeReader) {
+    try { state.codeReader.reset(); } catch(e) {}
+    state.codeReader = null;
   }
+  const videoEl = document.getElementById('scanner-video');
+  const stream = videoEl?.srcObject;
+  stream?.getTracks?.().forEach(track => track.stop());
+  if (videoEl) videoEl.srcObject = null;
+  state.scannerActive = false;
 }
 
 function processBarcode(code) {
@@ -908,17 +1030,18 @@ function processBarcode(code) {
     matchedSku = candidates.find(sku => sku && state.scanCounts.hasOwnProperty(sku)) || null;
   }
 
-  if (!matchedSku) { setScanStatus('❌ ไม่พบสินค้านี้ใน order', 'error'); vibrate([200, 50, 200]); return; }
+  if (!matchedSku) { setScanStatus('❌ ไม่พบสินค้านี้ใน order', 'error'); vibrate([200, 50, 200]); return false; }
 
   const item = o.items.find(i => i.sku === matchedSku);
   const cur  = state.scanCounts[matchedSku] || 0;
-  if (cur >= item.qty) { setScanStatus(`⚠️ ${item.name} — เกินจำนวนแล้ว!`, 'warning'); vibrate([300,50,300,50,300]); return; }
+  if (cur >= item.qty) { setScanStatus(`⚠️ ${item.name} — เกินจำนวนแล้ว!`, 'warning'); vibrate([300,50,300,50,300]); return false; }
 
   state.scanCounts[matchedSku] = cur + 1;
   setScanStatus(`✓ ${item.name} — ${state.scanCounts[matchedSku]}/${item.qty}`, 'success');
   vibrate([50]);
   renderPackItems();
   updateProgress();
+  return true;
 }
 
 function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
