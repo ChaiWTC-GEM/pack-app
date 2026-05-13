@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pack Verification</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+<style>
+  :root {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface2: #f2f2f7;
+    --border: #e5e5ea;
+    --text: #1c1c1e;
+    --muted: #8e8e93;
+    --accent: #007aff;
+    --green: #34c759;
+    --red: #ff3b30;
+    --orange: #ff9500;
+    --yellow: #ffcc00;
+    --sunday: #ff3b30;
+    --saturday: #007aff;
+    --fb: #1877f2;
+    --line: #06c755;
+    --tt: #ff0050;
+    --ig: #e1306c;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Sarabun', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-size: 17px;
+  }
+
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ============ HEADER ============ */
+  .header {
+    padding: 16px 20px 14px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-back {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface2); border: none;
+    color: var(--accent); font-size: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .header-title { font-size: 19px; font-weight: 700; flex: 1; }
+  .header-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* ============ CALENDAR ============ */
+  .cal-top {
+    padding: 16px 12px 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .cal-month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; padding: 0 4px;
+  }
+  .cal-month-label { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .cal-nav-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--accent); font-size: 22px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Weekday headers */
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    text-align: center; margin-bottom: 4px;
+  }
+  .cal-weekday {
+    font-size: 13px; font-weight: 700; padding: 6px 0;
+    letter-spacing: 0.3px;
+  }
+  .cal-weekday.sun { color: var(--sunday); }
+  .cal-weekday.sat { color: var(--saturday); }
+  .cal-weekday.weekday { color: var(--muted); }
+
+  /* Calendar grid — Apple style */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+  }
+  .cal-day {
+    min-height: 56px;
+    border-radius: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding-top: 6px;
+    cursor: default;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .cal-day.has-data { cursor: pointer; }
+  .cal-day.has-data:active { background: var(--surface2); }
+
+  .cal-day-num {
+    font-size: 20px; font-weight: 500; line-height: 1;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+  }
+  .cal-day.sunday   .cal-day-num { color: var(--sunday); font-weight: 600; }
+  .cal-day.saturday .cal-day-num { color: var(--saturday); font-weight: 600; }
+  .cal-day.other-month .cal-day-num { color: var(--border); }
+  .cal-day.today .cal-day-num {
+    background: var(--accent); color: #fff; font-weight: 700;
+  }
+  .cal-day.today.sunday   .cal-day-num { background: var(--sunday); }
+  .cal-day.today.saturday .cal-day-num { background: var(--saturday); }
+
+  .cal-dot-wrap { display: flex; gap: 4px; margin-top: 3px; justify-content: center; }
+  .cal-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .cal-dot.has-orders { background: var(--orange); }
+  .cal-dot.all-done   { background: var(--green); }
+  .cal-dot.partial    { background: var(--yellow); }
+
+  /* ============ UPCOMING ============ */
+  .scroll-area { flex: 1; overflow-y: auto; padding-bottom: 32px; }
+
+  .upcoming-item {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 16px 18px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 16px;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .upcoming-item:active { transform: scale(0.98); }
+  .upcoming-num { font-family: 'Space Mono',monospace; font-size: 36px; font-weight: 700; min-width: 44px; text-align: center; }
+  .upcoming-date { font-size: 17px; font-weight: 700; }
+  .upcoming-sub  { font-size: 14px; color: var(--muted); margin-top: 3px; }
+
+  /* ============ DAY SCREEN ============ */
+  .day-stats { display: flex; gap: 10px; padding: 16px; }
+  .stat-card {
+    flex: 1; background: var(--surface); border-radius: var(--radius);
+    padding: 16px 12px; border: 1px solid var(--border); text-align: center;
+  }
+  .stat-num { font-family: 'Space Mono',monospace; font-size: 36px; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .stat-card.done    .stat-num { color: var(--green); }
+  .stat-card.pending .stat-num { color: var(--orange); }
+
+  .channel-section { padding: 0 16px 16px; }
+  .channel-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 4px 10px; font-size: 14px; font-weight: 700;
+    letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted);
+  }
+  .channel-badge { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .ch-FB   { background: var(--fb);   color: #fff; }
+  .ch-LINE { background: var(--line); color: #fff; }
+  .ch-TT   { background: var(--tt);   color: #fff; }
+  .ch-IG   { background: var(--ig);   color: #fff; }
+
+  /* ============ ORDER CARD ============ */
+  .order-card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); margin-bottom: 10px;
+    cursor: pointer; overflow: hidden; transition: transform 0.1s;
+  }
+  .order-card:active { transform: scale(0.98); }
+  .order-card.multi-item { border-left: 5px solid var(--orange); }
+  .order-card.packed     { border-left: 5px solid var(--green); opacity: 0.65; }
+
+  .order-card-inner { padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
+  .order-qty-badge {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .order-qty-badge.single    { background: var(--surface2); }
+  .order-qty-badge.multi     { background: rgba(255,149,0,0.12); border: 1.5px solid var(--orange); }
+  .order-qty-badge.done-badge{ background: rgba(52,199,89,0.12); border: 1.5px solid var(--green); }
+  .order-qty-num  { font-family: 'Space Mono',monospace; font-size: 28px; font-weight: 700; line-height: 1; }
+  .order-qty-badge.multi     .order-qty-num { color: var(--orange); }
+  .order-qty-badge.done-badge .order-qty-num { color: var(--green); }
+  .order-qty-unit { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .order-info { flex: 1; min-width: 0; }
+  .order-id   { font-family: 'Space Mono',monospace; font-size: 12px; color: var(--accent); margin-bottom: 5px; }
+  .order-customer { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .order-items-preview { font-size: 13px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .order-status-icon { font-size: 22px; flex-shrink: 0; }
+
+  /* ============ PACK SCREEN ============ */
+  .pack-order-info {
+    background: var(--surface); padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pack-order-id { font-family: 'Space Mono',monospace; font-size: 12px; color: var(--accent); margin-bottom: 4px; }
+  .pack-customer { font-size: 20px; font-weight: 800; }
+  .pack-meta     { font-size: 14px; color: var(--muted); margin-top: 4px; }
+  .pack-progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+  .pack-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+  .pack-progress-fill.done { background: var(--green); }
+
+  .pack-items { padding: 14px; flex: 1; overflow-y: auto; }
+
+  /* ============ PACK ITEM ============ */
+  .pack-item {
+    background: var(--surface); border-radius: var(--radius);
+    border: 2px solid var(--border); margin-bottom: 12px; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .pack-item.complete { border-color: var(--green); }
+  .pack-item.over     { border-color: var(--red); }
+
+  .pack-item-header { padding: 16px 18px 8px; display: flex; align-items: flex-start; gap: 14px; }
+  .pack-item-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--surface2); display: flex; align-items: center;
+    justify-content: center; font-size: 22px; flex-shrink: 0; margin-top: 4px;
+  }
+  .pack-item-info  { flex: 1; min-width: 0; }
+  .pack-item-sku   { font-family: 'Space Mono',monospace; font-size: 12px; color: var(--muted); }
+  .pack-item-name  { font-size: 16px; font-weight: 700; margin-top: 3px; line-height: 1.3; }
+
+  .pack-item-count-wrap { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+  .pack-item-big-count {
+    font-family: 'Space Mono',monospace;
+    font-size: 52px; font-weight: 700; line-height: 1; letter-spacing: -2px;
+  }
+  .pack-item-big-count .scanned  { color: var(--accent); }
+  .pack-item-big-count .sep      { color: var(--border); font-size: 40px; }
+  .pack-item-big-count .required { color: var(--muted);  font-size: 36px; }
+  .pack-item.complete .pack-item-big-count .scanned { color: var(--green); }
+  .pack-item.over     .pack-item-big-count .scanned { color: var(--red); }
+  .pack-item-count-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-align: right; }
+
+  .pack-item-controls { display: flex; align-items: center; gap: 10px; padding: 10px 18px 16px; }
+  .ctrl-btn {
+    height: 56px; border-radius: 12px; border: none;
+    font-size: 22px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s, transform 0.1s; flex-shrink: 0;
+  }
+  .ctrl-btn:active   { opacity: 0.7; transform: scale(0.93); }
+  .ctrl-btn.reset    { width: 56px; background: var(--surface2); color: var(--muted); border: 1.5px solid var(--border); font-size: 18px; }
+  .ctrl-btn.minus    { width: 72px; background: rgba(255,59,48,0.12); color: var(--red); border: 1.5px solid rgba(255,59,48,0.3); }
+  .ctrl-btn.plus     { flex: 1; background: rgba(52,199,89,0.12); color: var(--green); border: 1.5px solid rgba(52,199,89,0.3); font-size: 30px; }
+  .ctrl-btn:disabled { opacity: 0.25; cursor: default; }
+  .ctrl-spacer { flex: 1; }
+
+  .pack-item-bar { height: 4px; background: var(--border); }
+  .pack-item-bar-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+  .pack-item.complete .pack-item-bar-fill { background: var(--green); }
+  .pack-item.over     .pack-item-bar-fill { background: var(--red); }
+
+  /* ============ SCAN AREA ============ */
+  .scan-area {
+    position: sticky; bottom: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 16px 18px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  .scan-status {
+    text-align: center; font-size: 15px; font-weight: 600;
+    color: var(--muted); margin-bottom: 12px; min-height: 22px;
+  }
+  .scan-status.success { color: var(--green); }
+  .scan-status.error   { color: var(--red); }
+  .scan-status.warning { color: var(--orange); }
+
+  .scan-actions { display: flex; gap: 10px; }
+  .btn-scan {
+    flex: 1; height: 58px; border-radius: var(--radius);
+    border: none; background: var(--accent); color: #fff;
+    font-family: 'Sarabun',sans-serif; font-size: 18px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .btn-scan:active { opacity: 0.85; }
+
+  .btn-manual {
+    width: 58px; height: 58px; border-radius: var(--radius);
+    background: var(--surface2); border: 1.5px solid var(--border);
+    color: var(--text); font-size: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-complete {
+    width: 100%; height: 60px; border-radius: var(--radius);
+    border: none; background: var(--green); color: #fff;
+    font-family: 'Sarabun',sans-serif; font-size: 19px; font-weight: 700;
+    cursor: pointer; margin-top: 10px; display: none;
+  }
+  .btn-complete.visible  { display: block; }
+  .btn-complete:disabled { background: var(--border); color: var(--muted); cursor: default; }
+
+  /* ============ MANUAL INPUT ============ */
+  .manual-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: flex-end; padding: 16px;
+  }
+  .manual-overlay.active { display: flex; }
+  .manual-sheet { background: var(--surface); border-radius: var(--radius); padding: 22px; width: 100%; }
+  .manual-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+  .manual-input {
+    width: 100%; height: 54px; background: var(--surface2);
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); font-family: 'Space Mono',monospace;
+    font-size: 18px; padding: 0 16px; outline: none;
+  }
+  .manual-input:focus { border-color: var(--accent); }
+  .manual-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .btn-manual-confirm {
+    flex: 1; height: 52px; background: var(--accent); border: none;
+    border-radius: var(--radius-sm); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer;
+  }
+  .btn-manual-cancel {
+    height: 52px; padding: 0 24px; background: var(--surface2);
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); font-size: 17px; cursor: pointer;
+  }
+
+  /* ============ LOADING ============ */
+  .loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 300;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: #fff; font-size: 15px; }
+
+  /* ============ TOAST ============ */
+  .toast {
+    position: fixed; bottom: 110px;
+    left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(28,28,30,0.92); border-radius: 30px;
+    padding: 12px 24px; font-size: 15px; font-weight: 600; color: #fff;
+    opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 400; white-space: nowrap;
+  }
+  .toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--green); }
+  .toast.error   { background: var(--red); }
+
+  /* ============ EMPTY STATE ============ */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 20px; text-align: center; gap: 12px;
+  }
+  .empty-icon  { font-size: 56px; }
+  .empty-title { font-size: 20px; font-weight: 700; }
+  .empty-sub   { font-size: 15px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- hidden camera input for barcode -->
+<input type="file" id="camera-input" accept="image/*" capture="environment"
+       style="display:none" onchange="handleCameraInput(event)">
+
+<!-- SCREEN 1: CALENDAR -->
+<div id="screen-calendar" class="screen active">
+  <div class="header" style="justify-content:space-between;">
+    <div>
+      <div class="header-title">📦 Pack Verification</div>
+      <div class="header-sub">เลือกวันที่ต้องการแพ็ค</div>
+    </div>
+    <button class="cal-nav-btn" onclick="syncOrders()" style="background:var(--accent);color:#fff;border-color:var(--accent);">↻</button>
+  </div>
+  <div class="cal-top">
+    <div class="cal-month-nav">
+      <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="cal-month-label" id="cal-month-label">—</div>
+      <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <div class="cal-weekday sun">อา</div>
+      <div class="cal-weekday weekday">จ</div>
+      <div class="cal-weekday weekday">อ</div>
+      <div class="cal-weekday weekday">พ</div>
+      <div class="cal-weekday weekday">พฤ</div>
+      <div class="cal-weekday weekday">ศ</div>
+      <div class="cal-weekday sat">ส</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <div class="scroll-area" id="upcoming-list" style="padding:16px;">
+    <div style="color:var(--muted);font-size:15px;text-align:center;padding:24px;">กำลังโหลด...</div>
+  </div>
+</div>
+
+<!-- SCREEN 2: DAY ORDERS -->
+<div id="screen-day" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('calendar')">‹</button>
+    <div>
+      <div class="header-title" id="day-title">—</div>
+      <div class="header-sub"  id="day-sub">—</div>
+    </div>
+  </div>
+  <div class="day-stats" id="day-stats"></div>
+  <div class="scroll-area" id="day-orders-list"></div>
+</div>
+
+<!-- SCREEN 3: PACK -->
+<div id="screen-pack" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('day')">‹</button>
+    <div>
+      <div class="header-title" id="pack-title">—</div>
+      <div class="header-sub"  id="pack-sub">—</div>
+    </div>
+  </div>
+  <div class="pack-order-info">
+    <div class="pack-order-id" id="pack-order-id">—</div>
+    <div class="pack-customer" id="pack-customer">—</div>
+    <div class="pack-meta"     id="pack-meta">—</div>
+    <div class="pack-progress-bar">
+      <div class="pack-progress-fill" id="pack-progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="pack-items scroll-area" id="pack-items-list"></div>
+  <div class="scan-area">
+    <div class="scan-status" id="scan-status">พร้อมสแกน</div>
+    <div class="scan-actions">
+      <button class="btn-scan" id="btn-scan" onclick="scanBarcode()"><span>📷</span> สแกน Barcode</button>
+      <button class="btn-manual" onclick="showManual()">⌨️</button>
+    </div>
+    <button class="btn-complete" id="btn-complete" onclick="confirmComplete()">✓ ยืนยันแพ็คเสร็จ</button>
+  </div>
+</div>
+
+<!-- MANUAL INPUT -->
+<div class="manual-overlay" id="manual-overlay">
+  <div class="manual-sheet">
+    <div class="manual-title">⌨️ กรอกรหัส SKU หรือ Barcode</div>
+    <input type="text" class="manual-input" id="manual-input"
+           placeholder="เช่น 143 C50P" inputmode="text" autocomplete="off">
+    <div class="manual-actions">
+      <button class="btn-manual-cancel" onclick="hideManual()">ยกเลิก</button>
+      <button class="btn-manual-confirm" onclick="confirmManual()">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">กำลังโหลด...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyKFQJTEaB2lQ1COtRnRATjKvmCXphUbIE3g204Xcaa0q9OqepuH4MOxEvebVODfdCY/exec";
+const LIFF_ID = "2009982188-VGyLBIfW";
+
+const state = {
+  currentMonth: new Date().getMonth(),
+  currentYear:  new Date().getFullYear(),
+  calSummary:   {},
+  skuMaster:    {},
+  currentDay:   null,
+  dayOrders:    [],
+  currentOrder: null,
+  scanCounts:   {},
+  liffReady:    false,
+};
+
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+  renderCalendar();
+  loadCalendarData();
+  loadSkuMaster();
+
+  // init LIFF non-blocking
+  if (window.liff) {
+    liff.init({ liffId: LIFF_ID })
+      .then(() => { state.liffReady = true; })
+      .catch(e => console.error("LIFF init error", e));
+  }
+});
+
+// ============================================================
+// SCREEN
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ============================================================
+// LOADING & TOAST
+// ============================================================
+function showLoading(t) {
+  document.getElementById('loading-text').textContent = t || 'กำลังโหลด...';
+  document.getElementById('loading').classList.add('active');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('active'); }
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// API — fetch ไปที่ Apps Script
+// ============================================================
+async function callAPI(action, params = {}) {
+  const url = new URL(GAS_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res  = await fetch(url.toString());
+  const data = await res.json();
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadCalendarData() {
+  try {
+    showLoading('โหลดข้อมูลปฏิทิน...');
+    state.calSummary = await callAPI('getCalendarSummary') || {};
+    renderCalendar();
+    renderUpcomingList();
+  } catch(e) {
+    showToast('โหลดข้อมูลไม่สำเร็จ', 'error');
+  } finally { hideLoading(); }
+}
+
+async function loadSkuMaster() {
+  try { state.skuMaster = await callAPI('getSkuMaster') || {}; } catch(e) {}
+}
+
+async function syncOrders() {
+  showLoading('Sync ออเดอร์...');
+  try {
+    await callAPI('syncAllOrders');
+    await loadCalendarData();
+    showToast('Sync เรียบร้อย ✓', 'success');
+  } catch(e) {
+    showToast('Sync ไม่สำเร็จ', 'error');
+  } finally { hideLoading(); }
+}
+
+// ============================================================
+// CALENDAR
+// ============================================================
+function changeMonth(d) {
+  state.currentMonth += d;
+  if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+  if (state.currentMonth < 0)  { state.currentMonth = 11; state.currentYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const { currentMonth: m, currentYear: y } = state;
+  document.getElementById('cal-month-label').textContent = THAI_MONTHS[m] + ' ' + (y + 543);
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const days     = new Date(y, m + 1, 0).getDate();
+  const todayStr = toDateStr(new Date());
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day other-month';
+    el.innerHTML = '<div class="cal-day-num"></div>';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= days; d++) {
+    const ds      = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(y, m, d).getDay();
+    const summary = state.calSummary[ds];
+    const el      = document.createElement('div');
+
+    let cls = 'cal-day';
+    if (dow === 0) cls += ' sunday';
+    if (dow === 6) cls += ' saturday';
+    if (ds === todayStr) cls += ' today';
+    if (summary && summary.total > 0) cls += ' has-data';
+    el.className = cls;
+
+    el.innerHTML = `<div class="cal-day-num">${d}</div>`;
+
+    if (summary && summary.total > 0) {
+      const dotCls = summary.packed === summary.total ? 'all-done'
+                   : summary.packed > 0 ? 'partial' : 'has-orders';
+      el.innerHTML += `<div class="cal-dot-wrap"><div class="cal-dot ${dotCls}"></div></div>`;
+      el.onclick = () => openDay(ds);
+    }
+    grid.appendChild(el);
+  }
+}
+
+function renderUpcomingList() {
+  const container = document.getElementById('upcoming-list');
+  const today = new Date();
+  const items = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const ds = toDateStr(d);
+    if (state.calSummary[ds]?.total > 0) items.push({ date: ds, ...state.calSummary[ds] });
+  }
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">ไม่มีออเดอร์ที่รอดำเนินการ</div><div class="empty-sub">กด ↻ เพื่อ sync ข้อมูลใหม่</div></div>';
+    return;
+  }
+  container.innerHTML = '<div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:0.5px;margin-bottom:12px;text-transform:uppercase;">ออเดอร์ที่รอดำเนินการ</div>' +
+    items.map(it => {
+      const pending = it.total - (it.packed || 0);
+      const label   = new Date(it.date + 'T00:00:00').toLocaleDateString('th-TH', { day:'numeric', month:'long', year:'2-digit' });
+      return `<div class="upcoming-item" onclick="openDay('${it.date}')">
+        <div class="upcoming-num" style="color:${pending>0?'var(--orange)':'var(--green)'}">${pending}</div>
+        <div><div class="upcoming-date">${label}</div><div class="upcoming-sub">รอแพ็ค ${pending} / ทั้งหมด ${it.total} ออเดอร์</div></div>
+        <div style="margin-left:auto;font-size:22px;color:var(--muted);">›</div>
+      </div>`;
+    }).join('');
+}
+
+// ============================================================
+// DAY VIEW
+// ============================================================
+async function openDay(dateStr) {
+  state.currentDay = dateStr;
+  showLoading('โหลดออเดอร์...');
+  try {
+    state.dayOrders = await callAPI('getOrdersByDate', { date: dateStr }) || [];
+    renderDayScreen(dateStr);
+    showScreen('day');
+  } catch(e) {
+    showToast('โหลดออเดอร์ไม่สำเร็จ', 'error');
+  } finally { hideLoading(); }
+}
+
+function renderDayScreen(dateStr) {
+  const label  = new Date(dateStr + 'T00:00:00').toLocaleDateString('th-TH', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const total  = state.dayOrders.length;
+  const packed = state.dayOrders.filter(o => o.status === 'packed').length;
+  document.getElementById('day-title').textContent = label;
+  document.getElementById('day-sub').textContent   = `${packed}/${total} แพ็คแล้ว`;
+  document.getElementById('day-stats').innerHTML = `
+    <div class="stat-card pending"><div class="stat-num">${total-packed}</div><div class="stat-label">รอแพ็ค</div></div>
+    <div class="stat-card done"><div class="stat-num">${packed}</div><div class="stat-label">แพ็คแล้ว</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${total}</div><div class="stat-label">ทั้งหมด</div></div>`;
+
+  const groups = {};
+  state.dayOrders.forEach(o => { if (!groups[o.channel]) groups[o.channel] = []; groups[o.channel].push(o); });
+  const list = document.getElementById('day-orders-list');
+  list.innerHTML = '';
+  ['TT','LINE','FB','IG'].forEach(ch => {
+    if (!groups[ch]) return;
+    const sec = document.createElement('div');
+    sec.className = 'channel-section';
+    sec.innerHTML = `<div class="channel-header"><span class="channel-badge ch-${ch}">${ch}</span><span>${groups[ch].length} ออเดอร์</span></div>`
+      + groups[ch].map(o => renderOrderCard(o)).join('');
+    list.appendChild(sec);
+  });
+}
+
+function renderOrderCard(o) {
+  const isPacked   = o.status === 'packed';
+  const isMulti    = o.total_qty > 1;
+  const cardClass  = isPacked ? 'packed' : isMulti ? 'multi-item' : '';
+  const badgeClass = isPacked ? 'done-badge' : isMulti ? 'multi' : 'single';
+  const skuList    = [...new Set(o.items.map(i => i.sku))].join(', ');
+  return `<div class="order-card ${cardClass}" onclick="openOrder('${o.order_id}')">
+    <div class="order-card-inner">
+      <div class="order-qty-badge ${badgeClass}">
+        <div class="order-qty-num">${isPacked ? '✓' : o.total_qty}</div>
+        <div class="order-qty-unit">${isPacked ? 'done' : 'ชิ้น'}</div>
+      </div>
+      <div class="order-info">
+        <div class="order-id">${o.order_id}</div>
+        <div class="order-customer">${o.customer}</div>
+        <div class="order-items-preview">${skuList}</div>
+      </div>
+      <div class="order-status-icon">${isPacked ? '✅' : isMulti ? '⚠️' : '›'}</div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// PACK VIEW
+// ============================================================
+function openOrder(orderId) {
+  const order = state.dayOrders.find(o => o.order_id === orderId);
+  if (!order) return;
+
+  // Aggregate SKU เดียวกัน
+  const agg = {};
+  order.items.forEach(item => {
+    if (agg[item.sku]) agg[item.sku].qty += item.qty;
+    else agg[item.sku] = { ...item };
+  });
+  order.items     = Object.values(agg);
+  order.total_qty = order.items.reduce((s, i) => s + i.qty, 0);
+
+  state.currentOrder = order;
+  state.scanCounts   = {};
+  order.items.forEach(item => { state.scanCounts[item.sku] = 0; });
+  renderPackScreen();
+  showScreen('pack');
+}
+
+function renderPackScreen() {
+  const o = state.currentOrder;
+  document.getElementById('pack-title').textContent    = o.customer;
+  document.getElementById('pack-sub').textContent      = o.channel + ' · ' + o.order_id;
+  document.getElementById('pack-order-id').textContent = o.order_id;
+  document.getElementById('pack-customer').textContent = o.customer;
+  document.getElementById('pack-meta').textContent     = `${o.channel} · ${o.items.length} รายการ · ${o.total_qty} ชิ้น`;
+  renderPackItems();
+  updateProgress();
+  setScanStatus('พร้อมสแกน', '');
+}
+
+function renderPackItems() {
+  const o = state.currentOrder;
+  document.getElementById('pack-items-list').innerHTML = o.items.map(item => {
+    const scanned    = state.scanCounts[item.sku] || 0;
+    const pct        = Math.min(100, Math.round(scanned / item.qty * 100));
+    const isComplete = scanned >= item.qty;
+    const isOver     = scanned > item.qty;
+    const cls        = isOver ? 'over' : isComplete ? 'complete' : '';
+    return `<div class="pack-item ${cls}">
+      <div class="pack-item-header">
+        <div class="pack-item-icon">${isComplete ? '📦' : '📋'}</div>
+        <div class="pack-item-info">
+          <div class="pack-item-sku">${item.sku}</div>
+          <div class="pack-item-name">${item.name}</div>
+        </div>
+        <div class="pack-item-count-wrap">
+          <div class="pack-item-big-count ${cls}">
+            <span class="scanned">${scanned}</span><span class="sep">/</span><span class="required">${item.qty}</span>
+          </div>
+          <div class="pack-item-count-label">สแกนแล้ว / ต้องส่ง</div>
+        </div>
+      </div>
+      <div class="pack-item-controls">
+        <button class="ctrl-btn reset" onclick="adjustCount('${item.sku}','reset')" ${scanned>0?'':'disabled'}>↺</button>
+        <div class="ctrl-spacer"></div>
+        <button class="ctrl-btn minus" onclick="adjustCount('${item.sku}','minus')" ${scanned>0?'':'disabled'}>−</button>
+        <button class="ctrl-btn plus"  onclick="adjustCount('${item.sku}','plus')">+</button>
+      </div>
+      <div class="pack-item-bar"><div class="pack-item-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function adjustCount(sku, action) {
+  const c = state.scanCounts[sku] || 0;
+  if (action === 'plus')  state.scanCounts[sku] = c + 1;
+  if (action === 'minus') state.scanCounts[sku] = Math.max(0, c - 1);
+  if (action === 'reset') state.scanCounts[sku] = 0;
+  vibrate([30]);
+  renderPackItems();
+  updateProgress();
+}
+
+function updateProgress() {
+  const o        = state.currentOrder;
+  const scanned  = Object.values(state.scanCounts).reduce((a, b) => a + b, 0);
+  const required = o.total_qty;
+  const pct      = Math.min(100, Math.round(scanned / required * 100));
+  const fill     = document.getElementById('pack-progress-fill');
+  fill.style.width = pct + '%';
+  fill.className   = 'pack-progress-fill' + (pct === 100 ? ' done' : '');
+  const allDone = o.items.every(i => (state.scanCounts[i.sku] || 0) >= i.qty);
+  const btn = document.getElementById('btn-complete');
+  if (allDone) {
+    btn.classList.add('visible'); btn.disabled = false;
+    setScanStatus('✓ ครบทุกรายการ — กดยืนยันได้เลย', 'success');
+  } else {
+    btn.classList.remove('visible');
+    setScanStatus(`รอสแกนอีก ${required - scanned} ชิ้น`, '');
+  }
+}
+
+function setScanStatus(msg, type) {
+  const el = document.getElementById('scan-status');
+  el.textContent = msg; el.className = 'scan-status ' + (type || '');
+}
+
+// ============================================================
+// SCAN — LIFF scanCodeV2 (GitHub Pages) หรือ input file fallback
+// ============================================================
+async function scanBarcode() {
+  // ถ้าอยู่ใน LINE และ LIFF ready → ใช้ scanCodeV2
+  if (window.liff && state.liffReady && liff.isInClient()) {
+    try {
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+      const result = await liff.scanCodeV2();
+      if (result && result.value) {
+        processBarcode(result.value);
+      } else {
+        showToast('ไม่พบ barcode', 'error');
+      }
+    } catch(e) {
+      // fallback ไป input file
+      document.getElementById('camera-input').click();
+    }
+  } else {
+    // browser ปกติ → input file
+    document.getElementById('camera-input').click();
+  }
+}
+
+async function handleCameraInput(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  showLoading('กำลังอ่าน barcode...');
+  try {
+    const ZXing  = window.ZXing;
+    const hints  = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.CODE_93, ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.CODABAR, ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.DATA_MATRIX,
+    ]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    const reader = new ZXing.BrowserMultiFormatReader(hints);
+    const imgUrl = URL.createObjectURL(file);
+    const result = await reader.decodeFromImageUrl(imgUrl);
+    URL.revokeObjectURL(imgUrl);
+    processBarcode(result.getText());
+  } catch(e) {
+    showToast('อ่าน barcode ไม่สำเร็จ — ลองถ่ายใหม่หรือกรอกเอง', 'error');
+  } finally {
+    hideLoading();
+    event.target.value = '';
+  }
+}
+
+function processBarcode(code) {
+  code = String(code).trim();
+  if (!code) return;
+  const o = state.currentOrder; if (!o) return;
+
+  let matchedSku = null;
+  if (state.scanCounts.hasOwnProperty(code)) matchedSku = code;
+  if (!matchedSku && state.skuMaster[code]?.sku && state.scanCounts.hasOwnProperty(state.skuMaster[code].sku))
+    matchedSku = state.skuMaster[code].sku;
+
+  if (!matchedSku) { setScanStatus('❌ ไม่พบสินค้านี้ใน order', 'error'); vibrate([200, 50, 200]); return; }
+
+  const item = o.items.find(i => i.sku === matchedSku);
+  const cur  = state.scanCounts[matchedSku] || 0;
+  if (cur >= item.qty) { setScanStatus(`⚠️ ${item.name} — เกินจำนวนแล้ว!`, 'warning'); vibrate([300,50,300,50,300]); return; }
+
+  state.scanCounts[matchedSku] = cur + 1;
+  setScanStatus(`✓ ${item.name} — ${state.scanCounts[matchedSku]}/${item.qty}`, 'success');
+  vibrate([50]);
+  renderPackItems();
+  updateProgress();
+}
+
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+// ============================================================
+// MANUAL INPUT
+// ============================================================
+function showManual() {
+  document.getElementById('manual-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('manual-input').focus(), 100);
+}
+function hideManual() {
+  document.getElementById('manual-overlay').classList.remove('active');
+  document.getElementById('manual-input').value = '';
+}
+function confirmManual() {
+  const val = document.getElementById('manual-input').value.trim();
+  if (val) processBarcode(val);
+  hideManual();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('manual-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmManual(); });
+});
+
+// ============================================================
+// COMPLETE ORDER
+// ============================================================
+async function confirmComplete() {
+  const o = state.currentOrder; if (!o) return;
+  if (!o.items.every(i => (state.scanCounts[i.sku] || 0) >= i.qty)) {
+    showToast('สินค้ายังไม่ครบ ไม่สามารถยืนยันได้', 'error'); return;
+  }
+  showLoading('บันทึกสถานะ...');
+  try {
+    await callAPI('markOrderPacked', { orderId: o.order_id });
+    o.status = 'packed';
+    const idx = state.dayOrders.findIndex(x => x.order_id === o.order_id);
+    if (idx > -1) state.dayOrders[idx].status = 'packed';
+    if (state.calSummary[state.currentDay])
+      state.calSummary[state.currentDay].packed = (state.calSummary[state.currentDay].packed || 0) + 1;
+    showToast('✓ แพ็คเสร็จแล้ว!', 'success');
+    setTimeout(() => showScreen('day'), 800);
+    renderDayScreen(state.currentDay);
+    renderCalendar();
+  } catch(e) {
+    showToast('บันทึกไม่สำเร็จ', 'error');
+  } finally { hideLoading(); }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function toDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+</script>
+</body>
+</html>
