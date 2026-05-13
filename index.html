@@ -346,6 +346,16 @@
     height: 2px; background: var(--green); box-shadow: 0 0 10px var(--green);
   }
   .scanner-status { color: #fff; font-size: 16px; font-weight: 700; margin-top: 18px; text-align: center; }
+  .scanner-result {
+    width: min(420px, 92vw); min-height: 58px; margin-top: 14px; padding: 12px 16px;
+    border-radius: 14px; background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.16); color: #fff;
+    font-size: 16px; font-weight: 800; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .scanner-result.success { background: rgba(52,199,89,0.24); border-color: rgba(52,199,89,0.65); }
+  .scanner-result.error { background: rgba(255,59,48,0.24); border-color: rgba(255,59,48,0.65); }
+  .scanner-result.warning { background: rgba(255,149,0,0.24); border-color: rgba(255,149,0,0.65); }
   .scanner-hint { color: rgba(255,255,255,0.66); font-size: 13px; margin-top: 6px; text-align: center; }
   .scanner-close {
     margin-top: 18px; height: 48px; padding: 0 34px; border-radius: 999px;
@@ -500,6 +510,7 @@
     <div class="scanner-line"></div>
   </div>
   <div class="scanner-status" id="scanner-status">กำลังเปิดกล้อง...</div>
+  <div class="scanner-result" id="scanner-result">รออ่าน barcode</div>
   <div class="scanner-hint">ใช้กล้องหลัง จ่อ barcode ให้อยู่ในกรอบ</div>
   <button class="scanner-close" onclick="stopScanner()">ปิดกล้อง</button>
 </div>
@@ -867,7 +878,7 @@ function adjustCount(sku, action) {
   if (action === 'plus')  state.scanCounts[sku] = Math.min(item.qty, c + 1);
   if (action === 'minus') state.scanCounts[sku] = Math.max(0, c - 1);
   if (action === 'reset') state.scanCounts[sku] = 0;
-  vibrate([30]);
+  safeVibrate([30]);
   renderPackItems();
   updateProgress();
 }
@@ -949,9 +960,11 @@ async function startScanner() {
 
   const overlay = document.getElementById('scanner-overlay');
   const status = document.getElementById('scanner-status');
+  const resultBox = document.getElementById('scanner-result');
   const videoEl = document.getElementById('scanner-video');
   overlay.classList.add('active');
   status.textContent = 'กำลังเปิดกล้องหลัง...';
+  setScannerResult('รออ่าน barcode', '');
   state.scannerActive = true;
   state.lastScanValue = '';
   state.lastScanAt = 0;
@@ -975,7 +988,8 @@ async function startScanner() {
       state.lastScanValue = value;
       state.lastScanAt = now;
       status.textContent = 'อ่านได้: ' + value;
-      processBarcode(value);
+      const scanResult = processBarcode(value);
+      showScanResult(scanResult, value);
     };
 
     if (state.codeReader.decodeFromConstraints) {
@@ -1021,10 +1035,26 @@ function stopScanner() {
   state.scannerActive = false;
 }
 
+function setScannerResult(message, type) {
+  const el = document.getElementById('scanner-result');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'scanner-result ' + (type || '');
+}
+
+function showScanResult(result, rawCode) {
+  if (!result) {
+    setScannerResult('อ่านไม่ได้ ลองขยับสินค้าอีกครั้ง', 'warning');
+    return;
+  }
+  setScannerResult(result.overlay || rawCode, result.type || '');
+}
+
 function processBarcode(code) {
   code = String(code).trim();
-  if (!code) return;
-  const o = state.currentOrder; if (!o) return;
+  if (!code) return { ok: false, type: 'warning', overlay: 'อ่านไม่ได้ ลองสแกนใหม่' };
+  const o = state.currentOrder;
+  if (!o) return { ok: false, type: 'error', overlay: 'ยังไม่ได้เลือกออเดอร์' };
 
   let matchedSku = null;
   if (state.scanCounts.hasOwnProperty(code)) matchedSku = code;
@@ -1034,21 +1064,35 @@ function processBarcode(code) {
     matchedSku = candidates.find(sku => sku && state.scanCounts.hasOwnProperty(sku)) || null;
   }
 
-  if (!matchedSku) { setScanStatus('❌ ไม่พบสินค้านี้ใน order', 'error'); vibrate([200, 50, 200]); return false; }
+  if (!matchedSku) {
+    const msg = 'ไม่ใช่สินค้าในออเดอร์นี้';
+    setScanStatus('❌ ' + msg, 'error');
+    safeVibrate([180, 80, 180]);
+    return { ok: false, type: 'error', overlay: 'ไม่ใช่สินค้าในออเดอร์นี้' };
+  }
 
   const item = o.items.find(i => i.sku === matchedSku);
   const cur  = state.scanCounts[matchedSku] || 0;
-  if (cur >= item.qty) { setScanStatus(`⚠️ ${item.name} — เกินจำนวนแล้ว!`, 'warning'); vibrate([300,50,300,50,300]); return false; }
+  if (cur >= item.qty) {
+    setScanStatus(`⚠️ ${item.name} — เกินจำนวนแล้ว!`, 'warning');
+    safeVibrate([260, 80, 260, 80, 260]);
+    return { ok: false, type: 'warning', overlay: `ครบแล้ว: ${item.sku} ${cur}/${item.qty}` };
+  }
 
   state.scanCounts[matchedSku] = cur + 1;
-  setScanStatus(`✓ ${item.name} — ${state.scanCounts[matchedSku]}/${item.qty}`, 'success');
-  vibrate([50]);
+  const next = state.scanCounts[matchedSku];
+  setScanStatus(`✓ ${item.name} — ${next}/${item.qty}`, 'success');
+  safeVibrate([60]);
   renderPackItems();
   updateProgress();
-  return true;
+  return { ok: true, type: 'success', overlay: `นับแล้ว: ${item.sku} ${next}/${item.qty}` };
 }
 
-function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+function safeVibrate(pattern) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch(e) {}
+}
 
 // ============================================================
 // MANUAL INPUT
