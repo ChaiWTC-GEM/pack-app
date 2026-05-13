@@ -162,6 +162,20 @@
   .stat-card.done    .stat-num { color: var(--green); }
   .stat-card.pending .stat-num { color: var(--orange); }
 
+  .day-print-actions { padding: 0 16px 14px; display: grid; gap: 10px; }
+  .print-link-btn {
+    width: 100%; min-height: 50px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--accent); background: rgba(0,122,255,0.08);
+    color: var(--accent); font-family: 'Sarabun',sans-serif;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 14px; text-align: center;
+  }
+  .print-link-btn.tt {
+    border-color: var(--tt); background: rgba(255,0,80,0.08); color: var(--tt);
+  }
+  .pack-print-actions { margin-top: 12px; }
+
   .channel-section { padding: 0 16px 16px; }
   .channel-header {
     display: flex; align-items: center; gap: 8px;
@@ -470,6 +484,7 @@
     </div>
   </div>
   <div class="day-stats" id="day-stats"></div>
+  <div class="day-print-actions" id="day-print-actions"></div>
   <div class="scroll-area" id="day-orders-list"></div>
 </div>
 
@@ -486,6 +501,7 @@
     <div class="pack-order-id" id="pack-order-id">—</div>
     <div class="pack-customer" id="pack-customer">—</div>
     <div class="pack-meta"     id="pack-meta">—</div>
+    <div class="pack-print-actions" id="pack-print-actions"></div>
     <div class="pack-progress-bar">
       <div class="pack-progress-fill" id="pack-progress-fill" style="width:0%"></div>
     </div>
@@ -551,6 +567,7 @@ const state = {
   skuMaster:    {},
   currentDay:   null,
   dayOrders:    [],
+  dayLabelFiles:[],
   currentOrder: null,
   scanCounts:   {},
   codeReader:   null,
@@ -613,6 +630,19 @@ function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'toast show ' + (type || '');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escapeAttr(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function openPrintUrl(url) {
+  if (!url) return;
+  if (window.liff && state.liffReady && liff.isInClient()) {
+    liff.openWindow({ url, external: true });
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
 }
 
 // ============================================================
@@ -743,7 +773,12 @@ async function openDay(dateStr) {
   state.currentDay = dateStr;
   showLoading('โหลดออเดอร์...');
   try {
-    state.dayOrders = await callAPI('getOrdersByDate', { date: dateStr }) || [];
+    const [orders, labelFiles] = await Promise.all([
+      callAPI('getOrdersByDate', { date: dateStr }),
+      callAPI('getLabelFilesByDate', { date: dateStr }).catch(() => [])
+    ]);
+    state.dayOrders = orders || [];
+    state.dayLabelFiles = labelFiles || [];
     renderDayScreen(dateStr);
     showScreen('day');
   } catch(e) {
@@ -761,6 +796,7 @@ function renderDayScreen(dateStr) {
     <div class="stat-card pending"><div class="stat-num">${total-packed}</div><div class="stat-label">รอแพ็ค</div></div>
     <div class="stat-card done"><div class="stat-num">${packed}</div><div class="stat-label">แพ็คแล้ว</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${total}</div><div class="stat-label">ทั้งหมด</div></div>`;
+  renderDayPrintActions();
 
   const groups = {};
   state.dayOrders.forEach(o => { if (!groups[o.channel]) groups[o.channel] = []; groups[o.channel].push(o); });
@@ -774,6 +810,19 @@ function renderDayScreen(dateStr) {
       + groups[ch].map(o => renderOrderCard(o)).join('');
     list.appendChild(sec);
   });
+}
+
+function renderDayPrintActions() {
+  const wrap = document.getElementById('day-print-actions');
+  const files = state.dayLabelFiles || [];
+  if (!files.length) {
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = files.map((f, idx) => {
+    const label = files.length === 1 ? 'พิมพ์ใบปะหน้า TikTok' : `พิมพ์ ${f.label_name || `TikTok ไฟล์ที่ ${idx + 1}`}`;
+    return `<button class="print-link-btn tt" onclick="openPrintUrl('${escapeAttr(f.label_url)}')">${label}</button>`;
+  }).join('');
 }
 
 function renderOrderCard(o) {
@@ -830,9 +879,19 @@ function renderPackScreen() {
   document.getElementById('pack-order-id').textContent = o.order_id;
   document.getElementById('pack-customer').textContent = o.customer;
   document.getElementById('pack-meta').textContent     = `${o.channel} · ${o.items.length} รายการ · ${o.total_qty} ชิ้น`;
+  renderPackPrintAction(o);
   renderPackItems();
   updateProgress();
   setScanStatus(o.status === 'packed' && !o.recountMode ? 'แพ็คแล้ว — กดนับใหม่ถ้าต้องการตรวจซ้ำ' : 'พร้อมสแกน', o.status === 'packed' && !o.recountMode ? 'success' : '');
+}
+
+function renderPackPrintAction(o) {
+  const wrap = document.getElementById('pack-print-actions');
+  if (o.label_url) {
+    wrap.innerHTML = `<button class="print-link-btn" onclick="openPrintUrl('${escapeAttr(o.label_url)}')">พิมพ์ใบปะหน้า</button>`;
+  } else {
+    wrap.innerHTML = '';
+  }
 }
 
 function renderPackItems() {
