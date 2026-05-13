@@ -888,9 +888,44 @@ function renderPackScreen() {
 function renderPackPrintAction(o) {
   const wrap = document.getElementById('pack-print-actions');
   if (o.label_url) {
-    wrap.innerHTML = `<button class="print-link-btn" onclick="openPrintUrl('${escapeAttr(o.label_url)}')">พิมพ์ใบปะหน้า</button>`;
+    wrap.innerHTML = `<button class="print-link-btn" onclick="createOrOpenLabel()">พิมพ์ใบปะหน้า</button>`;
+  } else if (canCreateLabelFromPack(o)) {
+    wrap.innerHTML = `<button class="print-link-btn" id="btn-create-label" onclick="createOrOpenLabel()">สร้างใบปะหน้า</button>`;
   } else {
     wrap.innerHTML = '';
+  }
+}
+
+function canCreateLabelFromPack(o) {
+  return ['LINE', 'FB'].includes(String(o?.channel || '').toUpperCase());
+}
+
+async function createOrOpenLabel() {
+  const o = state.currentOrder;
+  if (!o) return;
+  if (o.label_url) {
+    openPrintUrl(o.label_url);
+    return;
+  }
+  if (!canCreateLabelFromPack(o)) return;
+
+  const btn = document.getElementById('btn-create-label');
+  if (btn) { btn.disabled = true; btn.textContent = 'กำลังสร้างใบปะหน้า...'; }
+  showLoading('สร้างใบปะหน้า...');
+  try {
+    const result = await callAPI('createLabelForOrder', { orderId: o.order_id });
+    if (!result || !result.label_url) throw new Error('No label URL');
+    o.label_url = result.label_url;
+    const idx = state.dayOrders.findIndex(x => x.order_id === o.order_id);
+    if (idx > -1) state.dayOrders[idx].label_url = result.label_url;
+    renderPackPrintAction(o);
+    showToast(result.created ? 'สร้างใบปะหน้าแล้ว' : 'พบใบปะหน้าเดิม', 'success');
+    openPrintUrl(result.label_url);
+  } catch(e) {
+    showToast('สร้างใบปะหน้าไม่สำเร็จ', 'error');
+    renderPackPrintAction(o);
+  } finally {
+    hideLoading();
   }
 }
 
