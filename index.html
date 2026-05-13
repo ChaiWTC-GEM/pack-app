@@ -103,11 +103,12 @@
     gap: 0;
   }
   .cal-day {
-    min-height: 66px;
+    min-height: 74px;
     border-radius: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: flex-start;
-    padding-top: 6px;
+    padding-top: 7px;
+    padding-bottom: 10px;
     cursor: default;
     position: relative;
     border-bottom: 1px solid var(--border);
@@ -130,7 +131,7 @@
   .cal-day.today.sunday   .cal-day-num { background: var(--sunday); }
   .cal-day.today.saturday .cal-day-num { background: var(--saturday); }
 
-  .cal-dot-wrap { display: flex; gap: 5px; margin-top: 4px; justify-content: center; }
+  .cal-dot-wrap { display: flex; gap: 5px; margin-top: 7px; margin-bottom: 4px; justify-content: center; }
   .cal-dot { width: 10px; height: 10px; border-radius: 50%; }
   .cal-dot.has-orders { background: var(--orange); }
   .cal-dot.all-done   { background: var(--green); }
