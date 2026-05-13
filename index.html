@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
   :root {
@@ -155,7 +155,7 @@
     cursor: pointer; transition: transform 0.1s;
   }
   .upcoming-item:active { transform: scale(0.98); }
-  .upcoming-num { font-family: 'Space Mono',monospace; font-size: clamp(42px, 10vw, 56px); font-weight: 800; min-width: 58px; text-align: center; }
+  .upcoming-num { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(42px, 10vw, 56px); font-weight: 800; min-width: 58px; text-align: center; }
   .upcoming-date { font-size: clamp(20px, 4.8vw, 24px); font-weight: 800; }
   .upcoming-sub  { font-size: clamp(16px, 4vw, 19px); color: var(--muted); margin-top: 4px; font-weight: 700; }
 
@@ -165,7 +165,7 @@
     flex: 1; background: var(--surface); border-radius: var(--radius);
     padding: 18px 10px; border: 2px solid var(--border); text-align: center;
   }
-  .stat-num { font-family: 'Space Mono',monospace; font-size: clamp(38px, 9vw, 52px); font-weight: 800; line-height: 1; }
+  .stat-num { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(38px, 9vw, 52px); font-weight: 800; line-height: 1; }
   .stat-label { font-size: clamp(15px, 3.8vw, 18px); color: var(--muted); margin-top: 8px; font-weight: 800; }
   .stat-card.done    .stat-num { color: var(--green); }
   .stat-card.pending .stat-num { color: var(--orange); }
@@ -215,13 +215,13 @@
   .order-qty-badge.single    { background: var(--surface2); }
   .order-qty-badge.multi     { background: rgba(255,149,0,0.12); border: 1.5px solid var(--orange); }
   .order-qty-badge.done-badge{ background: rgba(52,199,89,0.12); border: 1.5px solid var(--green); }
-  .order-qty-num  { font-family: 'Space Mono',monospace; font-size: clamp(30px, 7vw, 40px); font-weight: 800; line-height: 1; }
+  .order-qty-num  { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(30px, 7vw, 40px); font-weight: 800; line-height: 1; }
   .order-qty-badge.multi     .order-qty-num { color: var(--orange); }
   .order-qty-badge.done-badge .order-qty-num { color: var(--green); }
   .order-qty-unit { font-size: 14px; color: var(--muted); margin-top: 3px; font-weight: 800; }
 
   .order-info { flex: 1; min-width: 0; }
-  .order-id   { font-family: 'Space Mono',monospace; font-size: clamp(14px, 3.5vw, 16px); color: var(--accent); margin-bottom: 6px; font-weight: 800; }
+  .order-id   { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(14px, 3.5vw, 16px); color: var(--accent); margin-bottom: 6px; font-weight: 800; }
   .order-customer { font-size: clamp(20px, 5vw, 25px); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .order-items-preview { font-size: clamp(15px, 3.8vw, 18px); color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
   .order-status-icon { font-size: 30px; flex-shrink: 0; }
@@ -231,7 +231,7 @@
     background: var(--surface); padding: 20px;
     border-bottom: 1px solid var(--border);
   }
-  .pack-order-id { font-family: 'Space Mono',monospace; font-size: clamp(15px, 3.8vw, 18px); color: var(--accent); margin-bottom: 6px; font-weight: 800; }
+  .pack-order-id { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(15px, 3.8vw, 18px); color: var(--accent); margin-bottom: 6px; font-weight: 800; }
   .pack-customer { font-size: clamp(25px, 6vw, 32px); font-weight: 800; line-height: 1.15; }
   .pack-meta     { font-size: clamp(17px, 4.2vw, 20px); color: var(--muted); margin-top: 8px; font-weight: 800; }
   .pack-progress-bar { height: 12px; background: var(--border); border-radius: 999px; margin-top: 16px; overflow: hidden; }
@@ -256,12 +256,12 @@
     justify-content: center; font-size: 22px; flex-shrink: 0; margin-top: 4px;
   }
   .pack-item-info  { flex: 1; min-width: 0; }
-  .pack-item-sku   { font-family: 'Space Mono',monospace; font-size: clamp(18px, 4.5vw, 22px); color: #000; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+  .pack-item-sku   { font-family: 'Sarabun', -apple-system, sans-serif; font-size: clamp(18px, 4.5vw, 22px); color: #000; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
   .pack-item-name  { font-size: clamp(18px, 4.5vw, 22px); font-weight: 800; margin-top: 4px; line-height: 1.35; }
 
   .pack-item-count-wrap { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
   .pack-item-big-count {
-    font-family: 'Space Mono',monospace;
+    font-family: 'Sarabun', -apple-system, sans-serif;
     font-size: clamp(48px, 12vw, 68px); font-weight: 800; line-height: 1;
   }
   .pack-item-big-count .scanned  { color: var(--accent); }
@@ -276,6 +276,19 @@
     border-radius: 999px; background: rgba(255,149,0,0.12);
     border: 1px solid rgba(255,149,0,0.25);
     color: var(--orange); font-size: 14px; font-weight: 800;
+  }
+  .item-scan-btn {
+    width: 100%; min-height: 64px; border-radius: 16px;
+    border: 0; background: var(--accent); color: #fff;
+    font-family: 'Sarabun',sans-serif; font-size: clamp(19px, 4.8vw, 23px);
+    font-weight: 800; cursor: pointer;
+  }
+  .item-scan-btn.manual {
+    background: #e8f7ee; color: var(--green);
+    border: 2px solid rgba(22,138,61,0.35);
+  }
+  .item-scan-btn:disabled {
+    background: var(--border); color: var(--muted); cursor: default;
   }
 
   .pack-item-controls { display: flex; align-items: center; gap: 12px; padding: 12px 18px 18px; }
@@ -396,7 +409,7 @@
   .manual-input {
     width: 100%; height: 54px; background: var(--surface2);
     border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    color: var(--text); font-family: 'Space Mono',monospace;
+    color: var(--text); font-family: 'Sarabun', -apple-system, sans-serif;
     font-size: 18px; padding: 0 16px; outline: none;
   }
   .manual-input:focus { border-color: var(--accent); }
@@ -540,8 +553,7 @@
   <div class="scan-area">
     <div class="scan-status" id="scan-status">พร้อมสแกน</div>
     <div class="scan-actions">
-      <button class="btn-scan" id="btn-scan" onclick="scanBarcode()"><span>📷</span> สแกน Barcode</button>
-      <button class="btn-manual" onclick="showManual()">⌨️</button>
+      <button class="btn-scan" id="btn-print-bottom" onclick="createOrOpenLabel()">พิมพ์ใบปะหน้า</button>
     </div>
     <button class="btn-recount" id="btn-recount" onclick="startRecount()">นับใหม่อีกครั้ง</button>
     <button class="btn-complete" id="btn-complete" onclick="confirmComplete()">✓ ยืนยันแพ็คเสร็จ</button>
@@ -605,6 +617,7 @@ const state = {
   lastScanValue:"",
   lastScanAt:   0,
   liffReady:    false,
+  targetScanSku:null,
 };
 
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -912,17 +925,21 @@ function renderPackScreen() {
   renderPackPrintAction(o);
   renderPackItems();
   updateProgress();
-  setScanStatus(o.status === 'packed' && !o.recountMode ? 'แพ็คแล้ว — กดนับใหม่ถ้าต้องการตรวจซ้ำ' : 'พร้อมสแกน', o.status === 'packed' && !o.recountMode ? 'success' : '');
+  setScanStatus(o.status === 'packed' && !o.recountMode ? 'แพ็คแล้ว — กดนับใหม่ถ้าต้องการตรวจซ้ำ' : 'เลือกรายการสินค้าเพื่อสแกน', o.status === 'packed' && !o.recountMode ? 'success' : '');
 }
 
 function renderPackPrintAction(o) {
   const wrap = document.getElementById('pack-print-actions');
-  if (o.label_url || canCreateLabelFromPack(o)) {
-    const label = o.label_url ? 'พิมพ์ใบปะหน้า' : 'สร้างใบปะหน้า';
-    wrap.innerHTML = `<button class="print-link-btn" id="btn-create-label" onclick="createOrOpenLabel()">${label}</button>`;
-  } else {
-    wrap.innerHTML = '';
-  }
+  wrap.innerHTML = '';
+  renderBottomPrintAction(o);
+}
+
+function renderBottomPrintAction(o) {
+  const btn = document.getElementById('btn-print-bottom');
+  if (!btn) return;
+  const show = Boolean(o?.label_url || canCreateLabelFromPack(o));
+  btn.style.display = show ? 'flex' : 'none';
+  btn.textContent = o?.label_url ? 'พิมพ์ใบปะหน้า' : 'สร้างใบปะหน้า';
 }
 
 function canCreateLabelFromPack(o) {
@@ -940,7 +957,7 @@ async function createOrOpenLabel() {
   }
   if (!canCreate) return;
 
-  const btn = document.getElementById('btn-create-label');
+  const btn = document.getElementById('btn-create-label') || document.getElementById('btn-print-bottom');
   if (btn) { btn.disabled = true; btn.textContent = o.label_url ? 'กำลังตรวจใบปะหน้า...' : 'กำลังสร้างใบปะหน้า...'; }
   showLoading(o.label_url ? 'ตรวจใบปะหน้า...' : 'สร้างใบปะหน้า...');
   try {
@@ -988,8 +1005,9 @@ function renderPackItems() {
       <div class="pack-item-controls" style="${readOnlyPacked ? 'display:none;' : ''}">
         <button class="ctrl-btn reset" onclick="adjustCount('${item.sku}','reset')" ${scanned>0?'':'disabled'}>↺</button>
         <div class="ctrl-spacer"></div>
-        <button class="ctrl-btn minus" onclick="adjustCount('${item.sku}','minus')" ${scanned>0?'':'disabled'}>−</button>
-        <button class="ctrl-btn plus"  onclick="adjustCount('${item.sku}','plus')" ${scanned>=item.qty?'disabled':''}>+</button>
+        ${manual
+          ? `<button class="item-scan-btn manual" onclick="adjustCount('${item.sku}','plus')" ${scanned>=item.qty?'disabled':''}>นับมือ +1</button>`
+          : `<button class="item-scan-btn" onclick="scanBarcode('${item.sku}')" ${scanned>=item.qty?'disabled':''}>สแกนรายการนี้</button>`}
       </div>
       <div class="pack-item-bar"><div class="pack-item-bar-fill" style="width:${pct}%"></div></div>
     </div>`;
@@ -1022,7 +1040,8 @@ function updateProgress() {
   const allDone = o.items.every(i => (state.scanCounts[i.sku] || 0) >= i.qty);
   const btn = document.getElementById('btn-complete');
   const recountBtn = document.getElementById('btn-recount');
-  scanActions.classList.toggle('hidden', readOnlyPacked);
+  const hasOrderPrint = Boolean(o.label_url || canCreateLabelFromPack(o));
+  scanActions.classList.toggle('hidden', readOnlyPacked && !hasOrderPrint);
   recountBtn.classList.toggle('visible', readOnlyPacked);
   btn.classList.toggle('visible', false);
   btn.disabled = true;
@@ -1059,8 +1078,9 @@ function setScanStatus(msg, type) {
 // ============================================================
 // SCAN — ZXing live camera
 // ============================================================
-async function scanBarcode() {
-  startScanner();
+async function scanBarcode(targetSku) {
+  state.targetScanSku = targetSku || null;
+  startScanner(targetSku);
 }
 
 function getBarcodeHints() {
@@ -1077,7 +1097,7 @@ function getBarcodeHints() {
   return hints;
 }
 
-async function startScanner() {
+async function startScanner(targetSku) {
   if (state.scannerActive) return;
   if (!window.ZXing) {
     showToast('โหลดตัวอ่าน barcode ไม่สำเร็จ', 'error');
@@ -1094,6 +1114,7 @@ async function startScanner() {
   state.scannerActive = true;
   state.lastScanValue = '';
   state.lastScanAt = 0;
+  state.targetScanSku = targetSku || state.targetScanSku || null;
 
   try {
     const ZXing = window.ZXing;
@@ -1114,8 +1135,9 @@ async function startScanner() {
       state.lastScanValue = value;
       state.lastScanAt = now;
       status.textContent = 'อ่านได้: ' + value;
-      const scanResult = processBarcode(value);
+      const scanResult = processBarcode(value, state.targetScanSku);
       showScanResult(scanResult, value);
+      setTimeout(stopScanner, 650);
     };
 
     if (state.codeReader.decodeFromConstraints) {
@@ -1127,7 +1149,7 @@ async function startScanner() {
       await state.codeReader.decodeFromVideoDevice(deviceId, videoEl, onResult);
     }
     setTimeout(applyContinuousFocus, 500);
-    status.textContent = 'พร้อมสแกนต่อเนื่อง';
+    status.textContent = 'พร้อมสแกน 1 ครั้ง';
   } catch(e) {
     stopScanner();
     showToast('เปิดกล้องไม่ได้ — ลองเปิดผ่าน Chrome/Safari หรือกรอกเอง', 'error');
@@ -1159,6 +1181,7 @@ function stopScanner() {
   stream?.getTracks?.().forEach(track => track.stop());
   if (videoEl) videoEl.srcObject = null;
   state.scannerActive = false;
+  state.targetScanSku = null;
 }
 
 function setScannerResult(message, type) {
@@ -1176,7 +1199,7 @@ function showScanResult(result, rawCode) {
   setScannerResult(result.overlay || rawCode, result.type || '');
 }
 
-function processBarcode(code) {
+function processBarcode(code, targetSku) {
   code = String(code).trim();
   if (!code) return { ok: false, type: 'warning', overlay: 'อ่านไม่ได้ ลองสแกนใหม่' };
   const o = state.currentOrder;
@@ -1195,6 +1218,14 @@ function processBarcode(code) {
     setScanStatus('❌ ' + msg, 'error');
     safeVibrate([180, 80, 180]);
     return { ok: false, type: 'error', overlay: 'ไม่ใช่สินค้าในออเดอร์นี้' };
+  }
+
+  if (targetSku && matchedSku !== targetSku) {
+    const targetItem = o.items.find(i => i.sku === targetSku);
+    const msg = `ผิดรายการ ต้องสแกน ${targetItem?.sku || targetSku}`;
+    setScanStatus('❌ ' + msg, 'error');
+    safeVibrate([180, 80, 180]);
+    return { ok: false, type: 'error', overlay: msg };
   }
 
   const item = o.items.find(i => i.sku === matchedSku);
