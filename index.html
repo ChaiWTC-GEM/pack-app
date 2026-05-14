@@ -493,7 +493,7 @@
       <div class="header-title">📦 Pack Verification</div>
       <div class="header-sub">เลือกวันที่ต้องการแพ็ค</div>
     </div>
-    <button class="cal-nav-btn" onclick="syncOrders()" style="background:var(--accent);color:#fff;border-color:var(--accent);">↻</button>
+    <button class="cal-nav-btn" onclick="refreshAppOrders()" style="background:var(--accent);color:#fff;border-color:var(--accent);" title="โหลดข้อมูลใหม่">↻</button>
   </div>
   <div class="cal-top">
     <div class="cal-month-nav">
@@ -722,14 +722,13 @@ async function loadSkuMaster() {
   try { state.skuMaster = await callAPI('getSkuMaster') || {}; } catch(e) {}
 }
 
-async function syncOrders() {
-  showLoading('Sync ออเดอร์...');
+async function refreshAppOrders() {
+  showLoading('โหลดข้อมูลใหม่...');
   try {
-    await callAPI('syncAllOrders');
     await loadCalendarData();
-    showToast('Sync เรียบร้อย ✓', 'success');
+    showToast('โหลดข้อมูลใหม่แล้ว ✓', 'success');
   } catch(e) {
-    showToast('Sync ไม่สำเร็จ', 'error');
+    showToast('โหลดข้อมูลไม่สำเร็จ', 'error');
   } finally { hideLoading(); }
 }
 
