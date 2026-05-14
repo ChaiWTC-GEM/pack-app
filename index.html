@@ -160,8 +160,7 @@
   .upcoming-sub  { font-size: clamp(16px, 4vw, 19px); color: var(--muted); margin-top: 4px; font-weight: 700; }
 
   .calendar-actions {
-    padding: 14px 16px 0;
-    background: var(--bg);
+    padding-top: 4px;
   }
   .barcode-entry-btn {
     width: 100%; min-height: 64px; border-radius: var(--radius);
@@ -572,9 +571,6 @@
     </div>
     <div class="cal-grid" id="cal-grid"></div>
   </div>
-  <div class="calendar-actions">
-    <button class="barcode-entry-btn" onclick="openBarcodeScreen()">เติมบาร์โค้ดสินค้า</button>
-  </div>
   <div class="scroll-area" id="upcoming-list" style="padding:16px;">
     <div style="color:var(--muted);font-size:15px;text-align:center;padding:24px;">กำลังโหลด...</div>
   </div>
@@ -977,7 +973,7 @@ function renderUpcomingList() {
     if (pending > 0) items.push({ date: ds, ...summary, pending });
   }
   if (!items.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">ไม่มีงานค้างแพ็ค</div><div class="empty-sub">กด ↻ เพื่อ sync ข้อมูลใหม่</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">ไม่มีงานค้างแพ็ค</div><div class="empty-sub">กด ↻ เพื่อ sync ข้อมูลใหม่</div></div>' + renderBarcodeEntryButton();
     return;
   }
   container.innerHTML = '<div style="font-size:13px;color:var(--muted);font-weight:700;letter-spacing:0.5px;margin-bottom:12px;text-transform:uppercase;">งานที่ต้องแพ็ค</div>' +
@@ -988,7 +984,13 @@ function renderUpcomingList() {
         <div><div class="upcoming-date">${label}</div><div class="upcoming-sub">รอแพ็ค ${it.pending} / ทั้งหมด ${it.total} ออเดอร์</div></div>
         <div style="margin-left:auto;font-size:22px;color:var(--muted);">›</div>
       </div>`;
-    }).join('');
+    }).join('') + renderBarcodeEntryButton();
+}
+
+function renderBarcodeEntryButton() {
+  return `<div class="calendar-actions">
+    <button class="barcode-entry-btn" onclick="openBarcodeScreen()">เติมบาร์โค้ดสินค้า</button>
+  </div>`;
 }
 
 // ============================================================
