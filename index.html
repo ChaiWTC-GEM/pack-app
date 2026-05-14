@@ -159,6 +159,66 @@
   .upcoming-date { font-size: clamp(20px, 4.8vw, 24px); font-weight: 800; }
   .upcoming-sub  { font-size: clamp(16px, 4vw, 19px); color: var(--muted); margin-top: 4px; font-weight: 700; }
 
+  .calendar-actions {
+    padding: 14px 16px 0;
+    background: var(--bg);
+  }
+  .barcode-entry-btn {
+    width: 100%; min-height: 64px; border-radius: var(--radius);
+    border: 2px solid rgba(11,114,217,0.28);
+    background: #ffffff; color: var(--accent);
+    font-family: 'Sarabun', -apple-system, sans-serif;
+    font-size: clamp(19px, 4.6vw, 23px); font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 8px 20px rgba(16,24,40,0.04);
+  }
+  .barcode-entry-btn:active { transform: scale(0.985); }
+
+  /* ============ BARCODE FILL ============ */
+  .barcode-panel { padding: 16px; }
+  .barcode-summary {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  }
+  .barcode-summary-main { font-size: clamp(22px, 5vw, 27px); font-weight: 800; }
+  .barcode-summary-sub { color: var(--muted); font-size: clamp(15px, 3.8vw, 18px); font-weight: 700; margin-top: 4px; }
+  .barcode-search {
+    width: 100%; height: 58px; border-radius: var(--radius-sm);
+    border: 2px solid var(--border); background: var(--surface);
+    color: var(--text); font-family: 'Sarabun', -apple-system, sans-serif;
+    font-size: clamp(18px, 4.2vw, 20px); font-weight: 700;
+    padding: 0 16px; outline: none; margin-bottom: 12px;
+  }
+  .barcode-search:focus { border-color: var(--accent); }
+  .barcode-filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
+  .barcode-filter {
+    flex: 0 0 auto; min-height: 46px; padding: 0 14px; border-radius: 999px;
+    border: 2px solid var(--border); background: var(--surface); color: var(--muted);
+    font-family: 'Sarabun', -apple-system, sans-serif;
+    font-size: 16px; font-weight: 800;
+  }
+  .barcode-filter.active { border-color: var(--accent); color: var(--accent); background: rgba(11,114,217,0.08); }
+  .barcode-card {
+    background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px;
+  }
+  .barcode-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .barcode-sku { color: #000; font-size: clamp(20px, 4.8vw, 24px); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+  .barcode-name { margin-top: 6px; font-size: clamp(17px, 4.2vw, 20px); color: var(--text); font-weight: 700; line-height: 1.35; }
+  .barcode-reason {
+    flex: 0 0 auto; border-radius: 999px; padding: 7px 10px;
+    font-size: 13px; font-weight: 800; color: #8a4b00; background: #fff3d6;
+  }
+  .barcode-reason.missing_master { color: #9a3412; background: #ffedd5; }
+  .barcode-reason.master_no_barcode { color: #854d0e; background: #fef3c7; }
+  .barcode-card-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .barcode-scan-btn {
+    width: 100%; height: 58px; border: none; border-radius: var(--radius-sm);
+    background: var(--accent); color: #fff;
+    font-family: 'Sarabun', -apple-system, sans-serif;
+    font-size: clamp(18px, 4.5vw, 21px); font-weight: 800;
+  }
+
   /* ============ DAY SCREEN ============ */
   .day-stats { display: flex; gap: 10px; padding: 16px; }
   .stat-card {
@@ -512,6 +572,9 @@
     </div>
     <div class="cal-grid" id="cal-grid"></div>
   </div>
+  <div class="calendar-actions">
+    <button class="barcode-entry-btn" onclick="openBarcodeScreen()">เติมบาร์โค้ดสินค้า</button>
+  </div>
   <div class="scroll-area" id="upcoming-list" style="padding:16px;">
     <div style="color:var(--muted);font-size:15px;text-align:center;padding:24px;">กำลังโหลด...</div>
   </div>
@@ -557,6 +620,30 @@
     </div>
     <button class="btn-recount" id="btn-recount" onclick="startRecount()">นับใหม่อีกครั้ง</button>
     <button class="btn-complete" id="btn-complete" onclick="confirmComplete()">✓ ยืนยันแพ็คเสร็จ</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: BARCODE FILL -->
+<div id="screen-barcode" class="screen">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('calendar')">‹</button>
+    <div>
+      <div class="header-title">เติมบาร์โค้ด</div>
+      <div class="header-sub" id="barcode-sub">สินค้าที่ต้องบันทึก barcode</div>
+    </div>
+  </div>
+  <div class="barcode-panel scroll-area">
+    <div class="barcode-summary" id="barcode-summary">
+      <div class="barcode-summary-main">กำลังโหลด...</div>
+      <div class="barcode-summary-sub">เทียบ SKU_Master กับ Master Price</div>
+    </div>
+    <input class="barcode-search" id="barcode-search" placeholder="ค้นหา SKU หรือชื่อสินค้า" oninput="updateBarcodeSearch(this.value)">
+    <div class="barcode-filters">
+      <button class="barcode-filter active" id="barcode-filter-all" onclick="setBarcodeFilter('all')">ทั้งหมด</button>
+      <button class="barcode-filter" id="barcode-filter-missing_master" onclick="setBarcodeFilter('missing_master')">ไม่มีใน Master Price</button>
+      <button class="barcode-filter" id="barcode-filter-master_no_barcode" onclick="setBarcodeFilter('master_no_barcode')">Master ไม่มี barcode</button>
+    </div>
+    <div id="barcode-items-list"></div>
   </div>
 </div>
 
@@ -623,7 +710,13 @@ const state = {
   targetScanSku:null,
   scanMode:     'pack',
   learnBarcodeSku:null,
+  learnBarcodeName:'',
+  barcodeItems: [],
+  barcodeSummary:null,
+  barcodeFilter:'all',
+  barcodeSearch:'',
   audioContext: null,
+  currentScreen:'calendar',
 };
 
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
@@ -665,6 +758,7 @@ function showScreen(name) {
   if (name !== 'pack') stopScanner();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
+  state.currentScreen = name;
 }
 
 // ============================================================
@@ -723,6 +817,89 @@ async function loadCalendarData() {
 
 async function loadSkuMaster() {
   try { state.skuMaster = await callAPI('getSkuMaster') || {}; } catch(e) {}
+}
+
+async function openBarcodeScreen() {
+  showScreen('barcode');
+  await loadMissingBarcodeItems();
+}
+
+async function loadMissingBarcodeItems() {
+  showLoading('โหลดรายการที่ต้องเติม barcode...');
+  try {
+    const result = await callAPI('getMissingBarcodeItems');
+    state.barcodeItems = Array.isArray(result?.items) ? result.items : [];
+    state.barcodeSummary = result?.summary || null;
+    renderBarcodeScreen();
+  } catch(e) {
+    showToast('โหลดรายการเติม barcode ไม่สำเร็จ', 'error');
+    renderBarcodeScreen(true);
+  } finally {
+    hideLoading();
+  }
+}
+
+function setBarcodeFilter(filter) {
+  state.barcodeFilter = filter || 'all';
+  renderBarcodeScreen();
+}
+
+function updateBarcodeSearch(value) {
+  state.barcodeSearch = value || '';
+  renderBarcodeScreen();
+}
+
+function getFilteredBarcodeItems() {
+  const term = normalizeSkuForLookup(state.barcodeSearch);
+  const textTerm = String(state.barcodeSearch || '').trim().toLowerCase();
+  return state.barcodeItems.filter(item => {
+    if (state.barcodeFilter !== 'all' && item.reason !== state.barcodeFilter) return false;
+    if (!term && !textTerm) return true;
+    return normalizeSkuForLookup(item.sku).includes(term) ||
+      String(item.name || '').toLowerCase().includes(textTerm);
+  });
+}
+
+function renderBarcodeScreen(hasError) {
+  const summary = state.barcodeSummary || { total: state.barcodeItems.length, missing_master: 0, master_no_barcode: 0 };
+  document.getElementById('barcode-sub').textContent = `รอเติม ${summary.total || 0} รายการ`;
+  document.getElementById('barcode-summary').innerHTML = hasError
+    ? `<div class="barcode-summary-main">โหลดไม่สำเร็จ</div><div class="barcode-summary-sub">ลองกดเข้าหน้านี้ใหม่อีกครั้ง</div>`
+    : `<div class="barcode-summary-main">ต้องเติม ${summary.total || 0} รายการ</div>
+       <div class="barcode-summary-sub">ไม่มีใน Master Price ${summary.missing_master || 0} · Master ไม่มี barcode ${summary.master_no_barcode || 0}</div>`;
+
+  ['all','missing_master','master_no_barcode'].forEach(filter => {
+    const btn = document.getElementById('barcode-filter-' + filter);
+    if (btn) btn.classList.toggle('active', state.barcodeFilter === filter);
+  });
+
+  const list = document.getElementById('barcode-items-list');
+  const items = getFilteredBarcodeItems();
+  if (hasError) {
+    list.innerHTML = '';
+    return;
+  }
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">✓</div>
+      <div class="empty-title">ไม่มีรายการในเงื่อนไขนี้</div>
+      <div class="empty-sub">ถ้าเพิ่งบันทึก barcode แล้ว รายการจะหายจากหน้านี้อัตโนมัติ</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(item => `<div class="barcode-card">
+    <div class="barcode-card-top">
+      <div>
+        <div class="barcode-sku">${item.sku}</div>
+        <div class="barcode-name">${item.name || '-'}</div>
+      </div>
+      <div class="barcode-reason ${item.reason}">${item.reason_label || ''}</div>
+    </div>
+    <div class="barcode-card-actions">
+      <button class="barcode-scan-btn" onclick="learnBarcode('${escapeAttr(item.sku)}','${escapeAttr(item.name)}')">สแกนเพื่อบันทึก barcode</button>
+    </div>
+  </div>`).join('');
 }
 
 async function refreshAppOrders() {
@@ -1008,12 +1185,12 @@ function renderPackItems() {
         </div>
       </div>
       <div class="pack-item-controls" style="${readOnlyPacked ? 'display:none;' : ''}">
-        <button class="ctrl-btn reset" onclick="adjustCount('${item.sku}','reset')" ${scanned>0?'':'disabled'}>↺</button>
+        <button class="ctrl-btn reset" onclick="adjustCount('${escapeAttr(item.sku)}','reset')" ${scanned>0?'':'disabled'}>↺</button>
         <div class="ctrl-spacer"></div>
         ${manual
-          ? `<button class="item-scan-btn" onclick="learnBarcode('${item.sku}')">บันทึกบาร์โค้ด</button>
-             <button class="item-scan-btn manual" onclick="adjustCount('${item.sku}','plus')" ${scanned>=item.qty?'disabled':''}>นับมือ +1</button>`
-          : `<button class="item-scan-btn" onclick="scanBarcode('${item.sku}')" ${scanned>=item.qty?'disabled':''}>สแกนรายการนี้</button>`}
+          ? `<button class="item-scan-btn" onclick="learnBarcode('${escapeAttr(item.sku)}','${escapeAttr(item.name)}')">บันทึกบาร์โค้ด</button>
+             <button class="item-scan-btn manual" onclick="adjustCount('${escapeAttr(item.sku)}','plus')" ${scanned>=item.qty?'disabled':''}>นับมือ +1</button>`
+          : `<button class="item-scan-btn" onclick="scanBarcode('${escapeAttr(item.sku)}')" ${scanned>=item.qty?'disabled':''}>สแกนรายการนี้</button>`}
       </div>
       <div class="pack-item-bar"><div class="pack-item-bar-fill" style="width:${pct}%"></div></div>
     </div>`;
@@ -1090,6 +1267,7 @@ async function scanBarcode(targetSku) {
   state.scanMode = 'pack';
   state.targetScanSku = targetSku || null;
   state.learnBarcodeSku = null;
+  state.learnBarcodeName = '';
   const item = state.currentOrder?.items.find(i => i.sku === targetSku);
   if (item && isManualCountItem(item)) {
     showToast('สินค้านี้ยังไม่มี barcode ให้กดบันทึกบาร์โค้ดก่อน', 'warning');
@@ -1098,11 +1276,12 @@ async function scanBarcode(targetSku) {
   startScanner(targetSku, 0);
 }
 
-async function learnBarcode(targetSku) {
+async function learnBarcode(targetSku, itemName) {
   if (state.scannerOpening || state.scannerActive) return;
   initAudioFeedback();
   state.scanMode = 'learn';
   state.learnBarcodeSku = targetSku || null;
+  state.learnBarcodeName = itemName || '';
   state.targetScanSku = targetSku || null;
   startScanner(targetSku, 0);
 }
@@ -1223,6 +1402,7 @@ function stopScanner() {
   state.scannerLastClosedAt = Date.now();
   state.targetScanSku = null;
   state.learnBarcodeSku = null;
+  state.learnBarcodeName = '';
   state.scanMode = 'pack';
 }
 
@@ -1295,7 +1475,8 @@ function processBarcodeLearning(code, targetSku) {
   code = String(code || '').trim();
   const o = state.currentOrder;
   const item = o?.items.find(i => i.sku === targetSku);
-  if (!code || !item) {
+  const itemName = item?.name || state.learnBarcodeName || '';
+  if (!code || !targetSku) {
     playScanSound('error');
     safeVibrate([180, 80, 180]);
     return { ok: false, type: 'error', overlay: 'บันทึก barcode ไม่ได้' };
@@ -1310,7 +1491,7 @@ function processBarcodeLearning(code, targetSku) {
   }
 
   setScannerResult('อ่านได้: ' + code, 'warning');
-  setTimeout(() => confirmSaveBarcodeForSku(targetSku, code, item.name), 120);
+  setTimeout(() => confirmSaveBarcodeForSku(targetSku, code, itemName), 120);
   return { ok: true, type: 'warning', overlay: `อ่านได้: ${code}` };
 }
 
@@ -1329,7 +1510,8 @@ async function confirmSaveBarcodeForSku(sku, barcode, itemName) {
     safeVibrate([60]);
     showToast(result?.duplicate ? 'barcode นี้มีอยู่แล้ว' : 'บันทึก barcode แล้ว', 'success');
     setScanStatus(`✓ บันทึก barcode ให้ ${sku} แล้ว`, 'success');
-    renderPackItems();
+    if (state.currentOrder) renderPackItems();
+    if (state.currentScreen === 'barcode') await loadMissingBarcodeItems();
   } catch(e) {
     playScanSound('error');
     safeVibrate([180, 80, 180]);
